@@ -1,0 +1,13 @@
+# vim: set ft=make :
+# The system justfile. Every module's recipes are collected into
+# justfile.apps; personal additions go in ~/.config/just/user.justfile.
+# The comment above a recipe is the description a menu shows for it.
+set allow-duplicate-recipes := true
+set ignore-comments := true
+
+_default:
+	@just --justfile '{{ justfile() }}' --list --list-heading $'Available commands:\n' --list-prefix $' - '
+
+import? "/usr/share/just/justfile.apps"
+
+import? "~/.config/just/user.justfile"

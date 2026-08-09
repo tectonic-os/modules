@@ -1,11 +1,13 @@
-description "goojust, the OS TUI, plus the just engine and fastfetch it builds on"
+description "goojust, the OS TUI over the system justfile, with the fastfetch it opens on"
 
 supports "fedora"
 
-collects "justfile.inc" into="/usr/share/goojust/justfile.apps" priority=500
+requires "just"
+
+provides "goojust"
 
 packages {
-    fedora "just" "fastfetch"
+    fedora "fastfetch"
 }
 
 asset "goojust" {
