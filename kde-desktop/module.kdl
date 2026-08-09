@@ -1,4 +1,4 @@
-description "KDE Plasma desktop, its application set and the krunner-bazaar integration"
+description "KDE Plasma desktop and the application set it ships with"
 
 supports "fedora"
 
