@@ -1,3 +1,5 @@
-description "System maintenance recipes for the goojust menu"
+description "System maintenance recipes, collected into the system justfile"
 
 supports "fedora"
+
+requires "just"
