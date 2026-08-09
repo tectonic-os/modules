@@ -6,7 +6,7 @@ mocked), asserting on the status written to GITHUB_OUTPUT and on the
 report. Dates are generated relative to today so age thresholds are
 deterministic without freezing the clock.
 
-Usage: python3 -m unittest discover -s modules/kernel/cachyos-kernel
+Usage: python3 -m unittest discover -s modules/cachyos-kernel
 Stdlib only, like the script under test.
 """
 
