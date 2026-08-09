@@ -1,0 +1,6 @@
+description "Search Bazaar's storefront from KRunner, the Plasma launcher"
+
+supports "fedora"
+
+requires "plasma-desktop"
+requires "bazaar"
