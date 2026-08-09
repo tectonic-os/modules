@@ -1,3 +1,5 @@
-description "GRUB dual boot discovery and the on-demand grub.cfg regeneration recipe"
+description "GRUB dual boot discovery, so another installed OS shows up in the boot menu"
 
 supports "fedora"
+
+provides-file "/usr/libexec/grub2-os-prober-regen"
