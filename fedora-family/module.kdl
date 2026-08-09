@@ -1,0 +1,7 @@
+description "The Fedora base family: the build environment every layer runs in, and the root filesystem work that closes it"
+
+supports "fedora"
+
+requires "mac-policy"
+
+provides "build-environment"
