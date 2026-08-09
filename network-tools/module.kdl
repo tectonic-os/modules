@@ -1,4 +1,4 @@
-description "Networking tools and policy: avahi, wireguard-tools, tcpdump, and LLMNR disabled"
+description "Network tooling: avahi, wireguard-tools, tcpdump, traceroute and friends"
 
 supports "fedora"
 
