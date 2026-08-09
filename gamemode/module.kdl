@@ -1,0 +1,7 @@
+description "GameMode, the daemon a game asks for the machine's full attention through"
+
+supports "fedora"
+
+packages {
+    fedora "gamemode"
+}
