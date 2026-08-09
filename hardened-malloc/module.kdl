@@ -2,4 +2,6 @@ description "GrapheneOS hardened_malloc, preloaded system wide"
 
 supports "fedora"
 
+requires "build-environment"
+
 provides "hardened-malloc"
