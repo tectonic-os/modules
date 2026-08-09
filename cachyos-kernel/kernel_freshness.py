@@ -211,7 +211,7 @@ def main():
     out = {
         "status": status,
         "kernel_id": "cachyos",
-        "module_path": "modules/kernel/cachyos-kernel",
+        "module_path": "modules/cachyos-kernel",
         "copr_version": copr_ver,
         "upstream_version": newest or "",
         "lag_days": lag_days if lag_days is not None else 0,
@@ -224,7 +224,7 @@ def main():
     gha_output(
         status=status,
         kernel_id="cachyos",
-        module_path="modules/kernel/cachyos-kernel",
+        module_path="modules/cachyos-kernel",
         copr_version=copr_ver,
         upstream_version=newest or "",
         lag_days=lag_days if lag_days is not None else "",
