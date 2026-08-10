@@ -4,4 +4,8 @@ supports "fedora"
 
 provides "signature-policy"
 
-provides-file "/etc/pki/containers/cosign.pub"
+key "cosign" {
+    generator "cosign"
+    public "/etc/pki/containers/cosign.pub"
+    private "cosign.key"
+}
