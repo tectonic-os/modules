@@ -3,7 +3,7 @@ kernel_devel_install "${DKMS_BUILD_DEPS[@]}" cabextract
 
 XONE_DKMS_VERSION="0.0.0+${ASSET_XONE_VERSION:0:12}"
 
-git clone --quiet https://github.com/medusalix/xone.git /tmp/xone
+git clone --quiet "$ASSET_XONE_URL" /tmp/xone
 git -C /tmp/xone checkout --quiet "$ASSET_XONE_VERSION"
 
 sed -i "s/#VERSION#/${XONE_DKMS_VERSION}/g" /tmp/xone/dkms.conf
