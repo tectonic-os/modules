@@ -31,3 +31,17 @@ base "ghcr.io/ublue-os/kinoite-main:44" {
     provides "rechunking" "flatpak"
     provides-file "/usr/bin/flatpak"
 }
+
+base "ghcr.io/bootcrew/debian-bootc:latest" {
+    about "Experimental Debian bootc base from Bootcrew"
+    family "debian"
+    provides "rechunking" "initramfs-generation"
+    signed #true
+}
+
+base "ghcr.io/bootcrew/ubuntu-bootc:latest" {
+    about "Experimental Ubuntu bootc base from Bootcrew"
+    family "ubuntu"
+    provides "rechunking" "initramfs-generation"
+    signed #true
+}
