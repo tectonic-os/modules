@@ -2,7 +2,7 @@
 
 set -ouex pipefail
 
-KERNEL_PKG="$(cat /usr/lib/kernel-build/kernel-package 2>/dev/null || echo 'kernel-core')"
+KERNEL_PKG="$(cat /usr/lib/kernel-build/kernel-package 2> /dev/null || echo 'kernel-core')"
 KVER="$(rpm -q --qf '%{VERSION}-%{RELEASE}.%{ARCH}' "$KERNEL_PKG")"
 
 DRACUT_MODULES=(ostree crypt)
