@@ -13,6 +13,7 @@ key "secureboot" {
     private "MOK.priv"
 }
 
+requires "build-environment"
 requires "initramfs-generation"
 collects "dracut.modules" into="/usr/lib/kernel-build/dracut.modules" priority=500
 
