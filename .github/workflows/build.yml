@@ -1,0 +1,120 @@
+---
+name: Build the collection
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/README.md'
+  schedule:
+    - cron: '30 4 * * 1'
+  workflow_dispatch:
+
+# Every module this collection holds, in one image per family it claims, built
+# out of a repository scaffolded here: what an importer gets is what is tested,
+# so `create repo`, `import module` and the lint every repository runs are
+# covered beside the modules themselves.
+jobs:
+  collection:
+    name: ${{ matrix.family }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - family: fedora
+            base: quay.io/fedora/fedora-bootc:44
+          - family: debian
+            base: ghcr.io/bootcrew/debian-bootc:latest
+          - family: ubuntu
+            base: ghcr.io/bootcrew/ubuntu-bootc:latest
+    env:
+      IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+      # goojust pins an asset on a repository that does not resolve yet, and
+      # power-just-scripts requires it. Both return when that repository lands.
+      SKIP: goojust power-just-scripts
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install shfmt
+        env:
+          SHFMT_VERSION: "3.13.1"
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/shfmt \
+            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
+          sudo chmod +x /usr/local/bin/shfmt
+
+      - name: Maximize build space
+        run: |
+          # the whole collection is a far larger image than any module suggests
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift \
+            /usr/local/share/powershell /usr/local/share/chromium
+          df -h /
+
+      - name: Install the released tool
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dir="${RUNNER_TEMP}/tect"
+          mkdir -p "$dir"
+          gh release download --repo tectonic-os/tectonic --dir "$dir" \
+            --pattern 'tect-v*-x86_64-linux-musl.tar.gz*'
+          (cd "$dir" && printf '%s  %s\n' "$(cat ./*.sha256)" ./*.tar.gz \
+            | sha256sum --check --status)
+          tar -xzf "$dir"/*.tar.gz -C "$dir"
+          # The scaffold is data, so pointing its sources block at this
+          # checkout is what makes the scaffolded repository import the tree
+          # under test rather than the published collection.
+          printf 'sources {\n    tectonic-os "%s"\n}\n' "$GITHUB_WORKSPACE" \
+            > "${dir}/assets/repo.sources.kdl"
+          {
+            echo "ROOT=${RUNNER_TEMP}/collection"
+            echo "TECT_BIN=${dir}/tect"
+            echo "TECT_ASSETS=${dir}/assets"
+          } >> "${GITHUB_ENV}"
+
+      - name: Scaffold a repository on this collection
+        env:
+          FAMILY: ${{ matrix.family }}
+          BASE: ${{ matrix.base }}
+        run: |
+          set -euo pipefail
+          "$TECT_BIN" create repo collection --root "$ROOT" --no-tui \
+            --owner tectonic-os --host github.com \
+            --image collection --base "$BASE"
+          for dir in */; do
+            name="${dir%/}"
+            case " $SKIP " in *" $name "*) continue ;; esac
+            grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
+            "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
+              --image collection --no-tui
+          done
+          cd "$ROOT" && "$TECT_BIN" generate
+
+      - name: Run lint
+        run: |
+          "${ROOT}/scripts/lint.sh"
+
+      - name: Run the tests the collection ships
+        run: |
+          set -euo pipefail
+          mapfile -t dirs < <(find . -name 'test_*.py' -type f \
+            -exec dirname {} \; | sort -u)
+          for dir in "${dirs[@]}"; do
+            python3 -m unittest discover -s "$dir" -v
+          done
+
+      - name: Setup Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build
+        run: |
+          cd "$ROOT" && "$TECT_BIN" build --backend buildx --no-tui
