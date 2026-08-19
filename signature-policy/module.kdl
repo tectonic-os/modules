@@ -1,6 +1,6 @@
 description "Sigstore signature verification for the image's own updates"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 provides "signature-policy"
 
