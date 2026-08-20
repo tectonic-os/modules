@@ -96,6 +96,18 @@ jobs:
             grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
             "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
               --image collection --no-tui
+            case "$name" in
+              cachyos-kernel)
+                "$TECT_BIN" create key secureboot --root "$ROOT" --no-tui \
+                  --cn "Collection CI"
+                ;;
+              signature-policy)
+                mkdir -p "$ROOT/keys/public/etc/pki/containers"
+                openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \
+                  | openssl pkey -pubout \
+                    -out "$ROOT/keys/public/etc/pki/containers/cosign.pub"
+                ;;
+            esac
           done
           cd "$ROOT" && "$TECT_BIN" generate
 
