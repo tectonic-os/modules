@@ -1,7 +1,5 @@
 source /ctx/lib/kernel-helpers.sh
 
-install -Dm644 "$MODDIR/files/usr/share/secureboot/sb_cert.der" /usr/share/secureboot/sb_cert.der
-
 mkdir -p /usr/lib/kernel-build
 if [ "$KERNEL" = "stock" ]; then
     echo "KERNEL=stock: keeping the Fedora base kernel, skipping CachyOS packages."
