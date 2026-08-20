@@ -116,6 +116,8 @@ jobs:
           "${ROOT}/scripts/lint.sh"
 
       - name: Run the tests the collection ships
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
         run: |
           set -euo pipefail
           mapfile -t dirs < <(find . -name 'test_*.py' -type f \
