@@ -130,5 +130,39 @@ jobs:
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
       - name: Build
+        env:
+          FAMILY: ${{ matrix.family }}
         run: |
-          cd "$ROOT" && "$TECT_BIN" build --backend buildx --no-tui
+          set -euo pipefail
+          args=(build --backend buildx --no-tui)
+          if [ "$FAMILY" = fedora ]; then
+            args+=(--oci-output "${RUNNER_TEMP}/collection.oci.tar")
+          fi
+          cd "$ROOT" && "$TECT_BIN" "${args[@]}"
+
+      - name: Scan the Fedora claim
+        if: matrix.family == 'fedora'
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ssg-base ssg-nondebian
+          datastream=/usr/share/xml/scap/ssg/content/ssg-fedora-ds.xml
+          [ -s "$datastream" ]
+
+          sudo podman load --input "${RUNNER_TEMP}/collection.oci.tar"
+          sudo podman image exists collection:latest
+          cp "$datastream" "${RUNNER_TEMP}/ds.xml"
+          sudo podman run --rm --entrypoint "" \
+            -v "${RUNNER_TEMP}:/scan:z" collection:latest \
+            sh -c "dnf -y install openscap-scanner > /dev/null && oscap xccdf eval \
+              --profile '(all)' --results-arf /scan/arf.xml /scan/ds.xml" || true
+          [ -s "${RUNNER_TEMP}/arf.xml" ]
+          sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/arf.xml"
+
+          report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
+            --root "$ROOT" --target collection --datastream "$datastream")"
+          printf '%s\n' "$report"
+          case "$report" in
+            *'| tectonic-os/coredumps | pci-dss | Req-3.2 | pass |'*) ;;
+            *) echo '::error::coredumps Req-3.2 was not measured as passing'; exit 1 ;;
+          esac
