@@ -5,3 +5,5 @@ supports "fedora"
 requires "mac-policy"
 
 provides "build-environment"
+
+helpers "lib/family.sh"

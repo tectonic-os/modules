@@ -1,8 +1,0 @@
-module composefs_execmem 0.1;
-
-require {
-	type kernel_t;
-	class process execmem;
-}
-
-allow kernel_t self:process execmem;
