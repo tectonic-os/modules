@@ -1,4 +1,4 @@
-description "sudo policy hardening: every sudo session gets its own pty"
+description "sudo policy hardening: own pty, own logfile, short credential cache"
 
 supports "fedora"
 
