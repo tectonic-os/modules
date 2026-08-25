@@ -3,5 +3,8 @@ description "Login policy: no sshd, faillock lockout, password quality, rescue s
 supports "fedora"
 
 satisfies {
-    stig "CCI-001619"
+    stig "CCI-001619" \
+        "CCI-000194" \
+        "CCI-000195"
+    nist "AC-7.1(ii)"
 }
