@@ -1,3 +1,7 @@
-description "sudo policy hardening: no session reuse, restricted environment, tty required"
+description "sudo policy hardening: every sudo session gets its own pty"
 
 supports "fedora"
+
+satisfies {
+    pci-dss "Req-10.2.5"
+}

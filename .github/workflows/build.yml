@@ -162,7 +162,15 @@ jobs:
           report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
             --root "$ROOT" --target collection --datastream "$datastream")"
           printf '%s\n' "$report"
-          case "$report" in
-            *'| tectonic-os/coredumps | pci-dss | Req-3.2 | pass |'*) ;;
-            *) echo '::error::coredumps Req-3.2 was not measured as passing'; exit 1 ;;
-          esac
+          # The scaffolded repository does not enforce, so `tect scap` reports
+          # a bad claim and still exits 0. Every claim row has to be green here
+          # or a red collection is the only thing that catches it.
+          rows="$(printf '%s\n' "$report" | grep '^| tectonic-os/' || true)"
+          if [ -z "$rows" ]; then
+            echo '::error::the report declared no claim at all'; exit 1
+          fi
+          bad="$(printf '%s\n' "$rows" | grep -v '| pass |$' || true)"
+          if [ -n "$bad" ]; then
+            printf '%s\n' "$bad"
+            echo '::error::a declared claim was not measured as passing'; exit 1
+          fi
