@@ -13,13 +13,27 @@ on:
     - cron: '30 4 * * 1'
   workflow_dispatch:
 
-# Every module this collection holds, in one image per family it claims, built
-# out of a repository scaffolded here: what an importer gets is what is tested,
-# so `create repo`, `import module` and the lint every repository runs are
-# covered beside the modules themselves.
+# Every leg scaffolds a repository with the released tool and imports out of
+# this checkout, so what an importer gets is what is tested: `create repo`,
+# `import module` and the lint every repository runs are covered beside the
+# modules themselves. The legs differ only in which modules they import.
+#
+#   collection  every module claiming the family. A smoke test for the
+#               scaffold-import-lint-build path, and not a compatibility proof:
+#               collect order is declared, so two modules writing one path do
+#               not collide, the later silently wins, and the build cannot fail
+#               on overlap. The overlap is reported instead.
+#   hardening   the hardening set alone, where claims are measured. Its own
+#               image so a failing claim and the set's own composition stay out
+#               of the leg that gates every other module.
+#   changed     what this event touched, closed over `requires`, scaffolded and
+#               generated but never built. A diff is not importable on its own:
+#               a module whose requirement nothing in the image provides is an
+#               unmet-requires error, so the closure is walked from the
+#               providers rather than filtered from the diff.
 jobs:
   collection:
-    name: ${{ matrix.family }}
+    name: ${{ matrix.image }} ${{ matrix.family }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -27,20 +41,38 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - family: fedora
+          - image: collection
+            family: fedora
             base: quay.io/fedora/fedora-bootc:44
-          - family: debian
+          - image: collection
+            family: debian
             base: ghcr.io/bootcrew/debian-bootc:latest
-          - family: ubuntu
+          - image: collection
+            family: ubuntu
             base: ghcr.io/bootcrew/ubuntu-bootc:latest
+          - image: hardening
+            family: fedora
+            base: quay.io/fedora/fedora-bootc:44
+          - image: changed
+            family: fedora
+            base: quay.io/fedora/fedora-bootc:44
     env:
       IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
+      IMAGE: ${{ matrix.image }}
+      FAMILY: ${{ matrix.family }}
       # goojust pins an asset on a repository that does not resolve yet, and
       # power-just-scripts requires it. Both return when that repository lands.
       SKIP: goojust power-just-scripts
+      # The hardening mechanisms that predate `hardening/` and keep their flat
+      # names, because published images already list them by those names.
+      HARDENING: >-
+        coredumps login-policy sudo-hardening network-policy hardened-malloc
+        signature-policy
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          fetch-depth: ${{ matrix.image == 'changed' && '0' || '1' }}
 
       - name: Install shfmt
         env:
@@ -77,25 +109,80 @@ jobs:
             > "${dir}/assets/repo.sources.kdl"
           {
             echo "ROOT=${RUNNER_TEMP}/collection"
+            echo "NAMES=${RUNNER_TEMP}/names"
             echo "TECT_BIN=${dir}/tect"
             echo "TECT_ASSETS=${dir}/assets"
           } >> "${GITHUB_ENV}"
 
+      # `find -mindepth 2` rather than `for dir in */`, so a member grouped in a
+      # directory is a member. An empty set is a legitimate answer for the
+      # changed leg and scaffolds an image listing nothing.
+      - name: Choose this leg's modules
+        env:
+          FROM: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE" in
+            collection)
+              find . -mindepth 2 -name module.kdl -not -path './.*' \
+                -printf '%h\n' | sed 's|^\./||' | sort > "$NAMES"
+              ;;
+            hardening)
+              {
+                printf '%s\n' $HARDENING
+                find hardening -mindepth 2 -name module.kdl -printf '%h\n'
+              } | sort -u \
+                | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+              ;;
+            changed)
+              from="${FROM:-$(git rev-parse -q --verify HEAD^ || true)}"
+              : > "$NAMES"
+              if [ -n "$from" ]; then
+                git diff --name-only "$from" HEAD | while read -r file; do
+                  dir="$(dirname "$file")"
+                  while [ "$dir" != "." ]; do
+                    if [ -f "${dir}/module.kdl" ]; then
+                      echo "$dir"
+                      break
+                    fi
+                    dir="$(dirname "$dir")"
+                  done
+                done | sort -u \
+                  | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+              fi
+              ;;
+          esac
+          echo "::notice::$(wc -l < "$NAMES") modules in the ${IMAGE} leg"
+          cat "$NAMES"
+
+      # Every claim in the collection has to sit on a module this leg imports,
+      # or the assertion below measures a set that does not contain it.
+      - name: Refuse a claim outside the hardening set
+        if: matrix.image == 'hardening'
+        run: |
+          set -euo pipefail
+          claiming="$(grep -rl '^satisfies' --include=module.kdl . \
+            | sed 's|^\./||;s|/module\.kdl$||' | sort)"
+          stray="$(comm -23 <(printf '%s\n' "$claiming") <(sort "$NAMES") || true)"
+          if [ -n "$stray" ]; then
+            printf '%s\n' "$stray"
+            echo '::error::a module declares `satisfies` and no leg measures it'
+            exit 1
+          fi
+
       - name: Scaffold a repository on this collection
         env:
-          FAMILY: ${{ matrix.family }}
           BASE: ${{ matrix.base }}
         run: |
           set -euo pipefail
-          "$TECT_BIN" create repo collection --root "$ROOT" --no-tui \
+          "$TECT_BIN" create repo "$IMAGE" --root "$ROOT" --no-tui \
             --owner tectonic-os --host github.com \
-            --image collection --base "$BASE"
-          for dir in */; do
-            name="${dir%/}"
+            --image "$IMAGE" --base "$BASE"
+          while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac
             grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
             "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
-              --image collection --no-tui
+              --image "$IMAGE" --no-tui
             case "$name" in
               cachyos-kernel)
                 "$TECT_BIN" create key secureboot --root "$ROOT" --no-tui \
@@ -108,7 +195,7 @@ jobs:
                     -out "$ROOT/keys/public/etc/pki/containers/cosign.pub"
                 ;;
             esac
-          done
+          done < "$NAMES"
           cd "$ROOT" && "$TECT_BIN" generate
 
       - name: Run lint
@@ -120,28 +207,63 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           set -euo pipefail
-          mapfile -t dirs < <(find . -name 'test_*.py' -type f \
+          mapfile -t names < "$NAMES"
+          if [ "${#names[@]}" -eq 0 ]; then
+            echo "no modules in this leg"
+            exit 0
+          fi
+          mapfile -t dirs < <(find "${names[@]}" -name 'test_*.py' -type f \
             -exec dirname {} \; | sort -u)
-          for dir in "${dirs[@]}"; do
+          for dir in ${dirs[@]+"${dirs[@]}"}; do
             python3 -m unittest discover -s "$dir" -v
           done
 
+      # Overlap is the discovery, never the exit code. Collect order is
+      # declared, so a shared path is resolved rather than a collision: this
+      # build is green either way and would be green on two modules setting
+      # opposite values in one file, which it cannot see at all.
+      - name: Report where modules overlap
+        if: matrix.image == 'collection'
+        run: |
+          set -euo pipefail
+          rows="$(jq -r '
+            .images[].targets[]
+            | (.overlay_overridden[]
+               | "- `\(.path)`: `\(.module)` ships it, `\(.by)` wins"),
+              (.modules
+               | map(.provides[] as $c | {c: $c, m: .path})
+               | group_by(.c)[] | select(length > 1)
+               | "- `\(.[0].c)`: \(map("`\(.m)`") | join(", "))")
+          ' "${ROOT}/generated/plan.json")"
+          {
+            echo "## Where ${FAMILY} modules overlap"
+            echo
+            echo "What one module ships and another replaces, and what two of"
+            echo "them provide. Read it; it is not a failure."
+            echo
+            printf '%s\n' "${rows:-None.}"
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Setup Buildx
+        if: matrix.image != 'changed'
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
 
+      # A pull request builds fedora alone; push and the schedule take all three
+      # families. The changed leg proves the import and never builds.
       - name: Build
-        env:
-          FAMILY: ${{ matrix.family }}
+        if: >-
+          matrix.image != 'changed'
+          && (matrix.family == 'fedora' || github.event_name != 'pull_request')
         run: |
           set -euo pipefail
           args=(build --backend buildx --no-tui)
-          if [ "$FAMILY" = fedora ]; then
-            args+=(--oci-output "${RUNNER_TEMP}/collection.oci.tar")
+          if [ "$IMAGE" = hardening ]; then
+            args+=(--oci-output "${RUNNER_TEMP}/${IMAGE}.oci.tar")
           fi
           cd "$ROOT" && "$TECT_BIN" "${args[@]}"
 
-      - name: Scan the Fedora claim
-        if: matrix.family == 'fedora'
+      - name: Scan the hardening claims
+        if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
           sudo apt-get update
@@ -149,18 +271,22 @@ jobs:
           datastream=/usr/share/xml/scap/ssg/content/ssg-fedora-ds.xml
           [ -s "$datastream" ]
 
-          sudo podman load --input "${RUNNER_TEMP}/collection.oci.tar"
-          sudo podman image exists collection:latest
+          sudo podman load --input "${RUNNER_TEMP}/${IMAGE}.oci.tar"
+          sudo podman image exists "${IMAGE}:latest"
           cp "$datastream" "${RUNNER_TEMP}/ds.xml"
           sudo podman run --rm --entrypoint "" \
-            -v "${RUNNER_TEMP}:/scan:z" collection:latest \
+            -v "${RUNNER_TEMP}:/scan:z" "${IMAGE}:latest" \
             sh -c "dnf -y install openscap-scanner > /dev/null && oscap xccdf eval \
               --profile '(all)' --results-arf /scan/arf.xml /scan/ds.xml" || true
           [ -s "${RUNNER_TEMP}/arf.xml" ]
           sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/arf.xml"
 
+          # `--base-scan` is the committed bare-base pass set, so a claim the
+          # base already passes reads as not load-bearing rather than as this
+          # module's work. It adds a column before Result and moves no row.
           report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
-            --root "$ROOT" --target collection --datastream "$datastream")"
+            --root "$ROOT" --target "$IMAGE" --datastream "$datastream" \
+            --base-scan "${GITHUB_WORKSPACE}/.ci/fedora-bootc-44-base-scan.json")"
           printf '%s\n' "$report"
           # The scaffolded repository does not enforce, so `tect scap` reports
           # a bad claim and still exits 0. Every claim row has to be green here
