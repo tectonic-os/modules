@@ -68,6 +68,21 @@ jobs:
       HARDENING: >-
         coredumps login-policy sudo-hardening network-policy hardened-malloc
         signature-policy
+      # The profile the hardening image is measured by. SSG 0.1.71 carries no
+      # CIS profile for Fedora, so a Level 1 floor is not available from this
+      # content: the four it carries are cusp_fedora, ospp, pci-dss and
+      # standard. cusp_fedora is the Fedora-specific one and the widest, 272
+      # rules selected, and it is where the modules moved the score: the bare
+      # base fails 18 of it and this image fails 6. standard would be a floor
+      # of 5 against a base of 7 and would hold almost nothing.
+      CONFORMS: cusp_fedora
+      # The floor, chosen on 2026-08-26 at what was measured, and moved only by
+      # editing this line. `--baseline` is the other half and a different
+      # instrument: it holds the rules and drifts to the last run, so it sees a
+      # single rule lost between two runs that both meet this number. Failures
+      # rather than passes, because a rule the content stops selecting drops
+      # both counts and only one of them is a regression.
+      MAX_FAILS: "6"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -178,6 +193,18 @@ jobs:
           "$TECT_BIN" create repo "$IMAGE" --root "$ROOT" --no-tui \
             --owner tectonic-os --host github.com \
             --image "$IMAGE" --base "$BASE"
+          # The image file is the interface for a `conforms`, and here it is the
+          # only one: `set conforms` is a picker and `--no-tui` refuses to ask
+          # rather than reading an answer, which is what the tool's own
+          # diagnostic says to do instead. The schema puts it in front of
+          # `base`, and the grep is so a scaffold that changes shape fails here
+          # rather than scanning an image measured against nothing.
+          if [ "$IMAGE" = hardening ]; then
+            image="${ROOT}/${IMAGE}.image.kdl"
+            sed -i "s|^    base \"|    conforms \"${CONFORMS}\"\n\n    base \"|" \
+              "$image"
+            grep -qx "    conforms \"${CONFORMS}\"" "$image"
+          fi
           while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac
             grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
@@ -262,6 +289,17 @@ jobs:
           fi
           cd "$ROOT" && "$TECT_BIN" "${args[@]}"
 
+      # What the last scan of this image passed, rule by rule. `tect scap`
+      # reads it before it rewrites it, so a regression is one red run and then
+      # the new floor, rather than a cache entry somebody has to go and delete.
+      - name: Restore the last scan's pass set
+        if: matrix.image == 'hardening'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/baseline.json
+          key: scap-${{ matrix.image }}-${{ github.run_id }}
+          restore-keys: scap-${{ matrix.image }}-
+
       - name: Scan the hardening claims
         if: matrix.image == 'hardening'
         run: |
@@ -286,7 +324,8 @@ jobs:
           # module's work. It adds a column before Result and moves no row.
           report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
             --root "$ROOT" --target "$IMAGE" --datastream "$datastream" \
-            --base-scan "${GITHUB_WORKSPACE}/.ci/fedora-bootc-44-base-scan.json")"
+            --base-scan "${GITHUB_WORKSPACE}/.ci/fedora-bootc-44-base-scan.json" \
+            --baseline "${RUNNER_TEMP}/baseline.json")"
           printf '%s\n' "$report"
           # The scaffolded repository does not enforce, so `tect scap` reports
           # a bad claim and still exits 0. Every claim row has to be green here
@@ -300,3 +339,42 @@ jobs:
             printf '%s\n' "$bad"
             echo '::error::a declared claim was not measured as passing'; exit 1
           fi
+
+          # The ratchet is red or it is a report nobody acts on. It catches a
+          # rule lost between two runs that both meet the floor, which is what
+          # a base bump un-hardening the image looks like.
+          case "$report" in
+            *'this run is the baseline.'* | \
+              *'Nothing that passed before stopped passing.'*) ;;
+            *)
+              echo '::error::a rule that passed the last scan does not now'
+              exit 1
+              ;;
+          esac
+
+          # The floor. The declared profile is the only row carrying the
+          # marker, so no row at all means the name is not one the datastream
+          # carries, which is the other half of the done-when.
+          fails="$(printf '%s\n' "$report" \
+            | awk -F'|' '/\(declared\)/ { gsub(/ /, "", $5); print $5 }')"
+          if [ -z "$fails" ]; then
+            echo "::error::no profile row is declared, so ${CONFORMS} is not a"\
+              "profile this datastream carries"
+            exit 1
+          fi
+          echo "::notice::${IMAGE} fails ${fails} of ${CONFORMS}, floor ${MAX_FAILS}"
+          if [ "$fails" -gt "$MAX_FAILS" ]; then
+            echo "::error::${fails} failures against a declared floor of"\
+              "${MAX_FAILS}; fix them, or choose a new floor deliberately"
+            exit 1
+          fi
+          if [ "$fails" -lt "$MAX_FAILS" ]; then
+            echo "::notice::the floor is loose and could come down to ${fails}"
+          fi
+
+      - name: Save the pass set for the next scan
+        if: always() && matrix.image == 'hardening'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ runner.temp }}/baseline.json
+          key: scap-${{ matrix.image }}-${{ github.run_id }}
