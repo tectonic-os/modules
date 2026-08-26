@@ -300,7 +300,7 @@ jobs:
           key: scap-${{ matrix.image }}-${{ github.run_id }}
           restore-keys: scap-${{ matrix.image }}-
 
-      - name: Scan the hardening claims
+      - name: Install the SSG content
         if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
@@ -308,22 +308,48 @@ jobs:
           sudo apt-get install -y --no-install-recommends ssg-base ssg-nondebian
           datastream=/usr/share/xml/scap/ssg/content/ssg-fedora-ds.xml
           [ -s "$datastream" ]
+          echo "DATASTREAM=${datastream}" >> "$GITHUB_ENV"
 
+      - name: Load the image under test
+        if: matrix.image == 'hardening'
+        run: |
+          set -euo pipefail
           sudo podman load --input "${RUNNER_TEMP}/${IMAGE}.oci.tar"
           sudo podman image exists "${IMAGE}:latest"
-          cp "$datastream" "${RUNNER_TEMP}/ds.xml"
+          cp "$DATASTREAM" "${RUNNER_TEMP}/ds.xml"
+
+      - name: Evaluate the rules
+        if: matrix.image == 'hardening'
+        run: |
+          set -euo pipefail
+          # The scanner is installed inside the image being measured, over the
+          # network, on every scan, so a transient mirror error is the same red X as
+          # a false claim. It retries rather than failing the run. The scanner must
+          # stay inside the image: scanning a mounted rootfs from outside returns
+          # 992 of 994 rules notapplicable.
           sudo podman run --rm --entrypoint "" \
             -v "${RUNNER_TEMP}:/scan:z" "${IMAGE}:latest" \
-            sh -c "dnf -y install openscap-scanner > /dev/null && oscap xccdf eval \
-              --profile '(all)' --results-arf /scan/arf.xml /scan/ds.xml" || true
+            sh -c 'n=0
+              until dnf -y install openscap-scanner >/dev/null; do
+                n=$((n+1))
+                [ "$n" -ge 3 ] && exit 1
+                dnf clean all
+                sleep 15
+              done
+              oscap xccdf eval --profile "(all)" \
+                --results-arf /scan/arf.xml /scan/ds.xml' || true
           [ -s "${RUNNER_TEMP}/arf.xml" ]
           sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/arf.xml"
 
+      - name: Compare what was declared to what was measured
+        if: matrix.image == 'hardening'
+        run: |
+          set -euo pipefail
           # `--base-scan` is the committed bare-base pass set, so a claim the
           # base already passes reads as not load-bearing rather than as this
           # module's work. It adds a column before Result and moves no row.
           report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
-            --root "$ROOT" --target "$IMAGE" --datastream "$datastream" \
+            --root "$ROOT" --target "$IMAGE" --datastream "$DATASTREAM" \
             --base-scan "${GITHUB_WORKSPACE}/.ci/fedora-bootc-44-base-scan.json" \
             --baseline "${RUNNER_TEMP}/baseline.json")"
           printf '%s\n' "$report"
