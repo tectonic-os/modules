@@ -21,22 +21,4 @@ dnf5 remove -y --noautoremove \
     NetworkManager-cloud-setup NetworkManager-tui \
     plasma-nm-l2tp plasma-nm-openswan plasma-nm-pptp
 
-dnf5 install -y plasma-browser-integration
-
-dnf5 install -y plymouth plymouth-theme-spinner
 plymouth-set-default-theme spinner
-
-KDE_PACKAGES=(
-    gvfs
-    gvfs-client
-    gvfs-fuse
-    input-remapper
-    kamera
-    kate
-    kate-krunner-plugin
-    kate-plugins
-    ksystemlog
-    plasma-firewall
-    plasma-firewall-firewalld
-)
-dnf5 install -y "${KDE_PACKAGES[@]}"

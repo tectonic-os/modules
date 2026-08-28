@@ -3,3 +3,7 @@ description "Full media codec set from negativo17, replacing the base image's st
 supports "fedora"
 
 requires "build-environment"
+
+packages {
+    fedora "ffmpeg" "ffmpeg-libs" "libva-utils" "pipewire-config-raop" "pipewire-gstreamer" "pipewire-libs-extra" "pipewire-utils"
+}

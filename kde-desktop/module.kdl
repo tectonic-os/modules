@@ -5,3 +5,10 @@ supports "fedora"
 provides "plasma-desktop"
 
 allow-verify "man-page-missing" unit="plasmalogin.service"
+
+packages {
+    fedora "plasma-browser-integration" "plymouth" "plymouth-theme-spinner" \
+            "gvfs" "gvfs-client" "gvfs-fuse" "input-remapper" "kamera" \
+            "kate" "kate-krunner-plugin" "kate-plugins" "ksystemlog" \
+            "plasma-firewall" "plasma-firewall-firewalld"
+}

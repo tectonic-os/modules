@@ -1,3 +1,7 @@
 description "Tailscale mesh VPN client"
 
 supports "fedora"
+
+packages {
+    fedora "tailscale" enablerepo="tailscale-stable"
+}
