@@ -4,6 +4,8 @@ supports "fedora"
 
 after "hardened-malloc"
 
+requires "build-environment"
+
 packages {
     fedora "codium" enablerepo="vscodium"
 }
