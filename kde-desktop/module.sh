@@ -1,7 +1,3 @@
-dnf5 group install -y kde-desktop
-
-dnf5 group install -y networkmanager-submodules
-
 dnf5 remove -y --noautoremove \
     abrt abrt-addon-ccpp abrt-addon-kerneloops abrt-addon-pstoreoops \
     abrt-addon-vmcore abrt-addon-xorg abrt-dbus abrt-desktop abrt-gui \

@@ -12,3 +12,7 @@ packages {
             "kate" "kate-krunner-plugin" "kate-plugins" "ksystemlog" \
             "plasma-firewall" "plasma-firewall-firewalld"
 }
+
+package-groups {
+    fedora "kde-desktop" "networkmanager-submodules"
+}
