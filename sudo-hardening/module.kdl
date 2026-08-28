@@ -2,6 +2,8 @@ description "sudo policy hardening: own pty, own logfile, short credential cache
 
 supports "fedora"
 
+mode "/etc/sudoers.d/99-hardening" "0440"
+
 satisfies {
     pci-dss "Req-10.2.5"
 }
