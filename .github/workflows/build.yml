@@ -66,8 +66,8 @@ jobs:
       # The hardening mechanisms that predate `hardening/` and keep their flat
       # names, because published images already list them by those names.
       HARDENING: >-
-        coredumps login-policy sudo-hardening network-policy hardened-malloc
-        signature-policy
+        hardening/coredumps hardening/login-policy hardening/sudo-hardening
+        hardening/network-policy hardening/hardened-malloc signature-policy
       # The profile the hardening image is measured by. SSG 0.1.71 carries no
       # CIS profile for Fedora, so a Level 1 floor is not available from this
       # content: the four it carries are cusp_fedora, ospp, pci-dss and
