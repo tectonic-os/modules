@@ -63,11 +63,11 @@ jobs:
       # goojust pins an asset on a repository that does not resolve yet, and
       # power-just-scripts requires it. Both return when that repository lands.
       SKIP: goojust power-just-scripts
-      # The hardening mechanisms that predate `hardening/` and keep their flat
-      # names, because published images already list them by those names.
-      HARDENING: >-
-        hardening/coredumps hardening/login-policy hardening/sudo-hardening
-        hardening/network-policy hardening/hardened-malloc signature-policy
+      # The walk under `hardening/` finds every hardening mechanism.
+      # `signature-policy` is added by name because it is not one: the
+      # published hardening image needs the module declaring the cosign
+      # public key.
+      HARDENING: signature-policy
       # The profile the hardening image is measured by. SSG 0.1.71 carries no
       # CIS profile for Fedora, so a Level 1 floor is not available from this
       # content: the four it carries are cusp_fedora, ospp, pci-dss and
