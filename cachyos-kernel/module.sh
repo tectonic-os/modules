@@ -5,10 +5,7 @@ if [ "$KERNEL" = "stock" ]; then
     echo "KERNEL=stock: keeping the Fedora base kernel, skipping CachyOS packages."
     echo "kernel-core" > /usr/lib/kernel-build/kernel-package
 else
-    dnf5 -y copr enable bieszczaders/kernel-cachyos
-    dnf5 -y copr enable bieszczaders/kernel-cachyos-addons
-
-    dnf5 -y --setopt=tsflags=noscripts install --enablerepo="copr:copr.fedorainfracloud.org:bieszczaders:kernel-cachyos" \
+    dnf5 -y --setopt=tsflags=noscripts install --enablerepo="$COPR_BIESZCZADERS_KERNEL_CACHYOS" \
         kernel-cachyos \
         kernel-cachyos-core \
         kernel-cachyos-modules \
@@ -16,7 +13,7 @@ else
 
     echo "kernel-cachyos-core" > /usr/lib/kernel-build/kernel-package
 
-    dnf5 -y install --enablerepo="copr:copr.fedorainfracloud.org:bieszczaders:kernel-cachyos-addons" \
+    dnf5 -y install --enablerepo="$COPR_BIESZCZADERS_KERNEL_CACHYOS_ADDONS" \
         ananicy-cpp \
         cachyos-ananicy-rules \
         cachyos-settings \
@@ -39,8 +36,6 @@ else
         echo "No MOK key supplied, kernel and modules are unsigned."
     fi
 
-    dnf5 -y copr disable bieszczaders/kernel-cachyos
-    dnf5 -y copr disable bieszczaders/kernel-cachyos-addons
     dnf5 -y remove --noautoremove kernel-cachyos-devel-matched sbsigntools
 
     dnf5 -y remove --noautoremove kernel kernel-core kernel-modules kernel-modules-core

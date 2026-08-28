@@ -5,3 +5,9 @@ supports "fedora"
 requires "build-environment"
 requires "plasma-desktop"
 requires "bazaar"
+
+copr "ublue-os/packages"
+
+packages {
+    fedora "krunner-bazaar" enablerepo="ublue-os/packages"
+}
