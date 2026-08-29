@@ -4,6 +4,8 @@ supports "fedora" "debian" "ubuntu"
 
 provides "plasma-desktop"
 
+requires "build-environment"
+
 allow-verify "man-page-missing" unit="plasmalogin.service"
 
 packages {
@@ -37,7 +39,7 @@ packages {
             "kate" "ksystemlog" "kamera" \
             "gvfs" "gvfs-daemons" "gvfs-fuse" \
             "firewalld" "accountsservice" "tuned" "tuned-ppd" "thermald" \
-            "switcheroo-control" "input-remapper" \
+            "switcheroo-control" "input-remapper-daemon" "input-remapper-gtk" \
             "udisks2" "upower" "xdg-user-dirs" \
             "pipewire" "pipewire-pulse" "wireplumber" \
             "network-manager" "wpasupplicant" "bluez" "pinentry-qt" \
@@ -54,7 +56,7 @@ packages {
             "kate" "ksystemlog" "kamera" \
             "gvfs" "gvfs-daemons" "gvfs-fuse" \
             "firewalld" "accountsservice" "tuned" "tuned-ppd" "thermald" \
-            "switcheroo-control" "input-remapper" \
+            "switcheroo-control" "input-remapper-daemon" "input-remapper-gtk" \
             "udisks2" "upower" "xdg-user-dirs" \
             "pipewire" "pipewire-pulse" "wireplumber" \
             "network-manager" "wpasupplicant" "bluez" "pinentry-qt" \
