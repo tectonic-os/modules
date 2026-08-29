@@ -1,0 +1,3 @@
+description "Drops the server, cloud and enterprise payload fedora-bootc ships, for images that are workstations"
+
+supports "fedora"

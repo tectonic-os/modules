@@ -1,0 +1,9 @@
+description "Plymouth boot splash on the spinner theme"
+
+supports "fedora" "debian" "ubuntu"
+
+packages {
+    fedora "plymouth" "plymouth-theme-spinner"
+    debian "plymouth" "plymouth-themes"
+    ubuntu "plymouth" "plymouth-theme-spinner"
+}
