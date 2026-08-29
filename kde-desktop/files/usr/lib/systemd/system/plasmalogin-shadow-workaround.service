@@ -3,6 +3,7 @@ Description=Workaround for missing plasmalogin entries in /etc/shadow & /etc/gsh
 Documentation=https://forge.fedoraproject.org/kde/SIG/issues/684
 ConditionPathIsReadWrite=/etc
 ConditionPathExists=/run/ostree-booted
+ConditionPathExists=/usr/lib/systemd/system/plasmalogin.service
 ConditionPathExists=!/etc/.plasmalogin-shadow-workaround
 Before=plasmalogin.service
 
