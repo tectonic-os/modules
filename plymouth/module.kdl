@@ -2,6 +2,8 @@ description "Plymouth boot splash on the spinner theme"
 
 supports "fedora" "debian" "ubuntu"
 
+requires "build-environment"
+
 packages {
     fedora "plymouth" "plymouth-theme-spinner"
     debian "plymouth" "plymouth-themes"
