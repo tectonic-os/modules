@@ -197,13 +197,24 @@ jobs:
           # only one: `set conforms` is a picker and `--no-tui` refuses to ask
           # rather than reading an answer, which is what the tool's own
           # diagnostic says to do instead. The schema puts it in front of
-          # `base`, and the grep is so a scaffold that changes shape fails here
-          # rather than scanning an image measured against nothing.
+          # `base`, so the splice is one substitution only while the scaffold
+          # holds one image. Both counts are checked rather than presence
+          # alone: the sed is global, so a second image would take a `conforms`
+          # nothing measured it against and the file would still grep clean.
           if [ "$IMAGE" = hardening ]; then
             image="${ROOT}/${IMAGE}.image.kdl"
+            bases="$(grep -c '^    base "' "$image" || true)"
+            if [ "$bases" != 1 ]; then
+              echo "::error::${image} declares ${bases} images; the conforms splice writes one"
+              exit 1
+            fi
             sed -i "s|^    base \"|    conforms \"${CONFORMS}\"\n\n    base \"|" \
               "$image"
-            grep -qx "    conforms \"${CONFORMS}\"" "$image"
+            wrote="$(grep -cx "    conforms \"${CONFORMS}\"" "$image" || true)"
+            if [ "$wrote" != 1 ]; then
+              echo "::error::${image} carries ${wrote} of that conforms, expected one"
+              exit 1
+            fi
           fi
           while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac
