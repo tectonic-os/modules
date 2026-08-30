@@ -1,0 +1,15 @@
+description "tect itself, so a booted image answers for its own build with no repository; pinned separately from the tect-version that built it"
+
+supports "fedora"
+
+provides-file "/usr/bin/tect"
+provides-file "/usr/share/tectonic/assets"
+
+asset "tect" {
+    pin {
+        renovate datasource="github-releases" depName="tectonic-os/tectonic"
+        version "0.6.10"
+        url "https://github.com/tectonic-os/tectonic/releases/download/v{version}/tect-v{version}-x86_64-linux-musl.tar.gz"
+        sha256 "b8f29f839a2dd46f57c4cac1a0e9a22924cd628eb572083386d2c326b22c8f3f" from="sidecar"
+    }
+}
