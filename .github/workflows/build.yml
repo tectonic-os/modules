@@ -105,6 +105,18 @@ jobs:
             /usr/local/share/powershell /usr/local/share/chromium
           df -h /
 
+      # The runner hands root podman a fuse-overlayfs mount program, which
+      # turns off the native overlay diff, so every layer commit walks the
+      # whole rootfs: about two minutes a layer whatever the layer holds.
+      # Written before anything pulls, so the store is created under the
+      # driver it keeps and nothing has to be reset.
+      - name: Settle the container storage driver
+        run: |
+          sudo mkdir -p /etc/containers
+          printf '[storage]\ndriver = "overlay"\n' \
+            | sudo tee /etc/containers/storage.conf > /dev/null
+          sudo podman info --format 'storage: {{.Store.GraphDriverName}} {{.Store.GraphOptions}}'
+
       - name: Install the released tool
         env:
           GH_TOKEN: ${{ github.token }}
@@ -282,10 +294,6 @@ jobs:
             printf '%s\n' "${rows:-None.}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Setup Buildx
-        if: matrix.image != 'changed'
-        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
-
       # A pull request builds fedora alone; push and the schedule take all three
       # families. The changed leg proves the import and never builds.
       - name: Build
@@ -294,11 +302,11 @@ jobs:
           && (matrix.family == 'fedora' || github.event_name != 'pull_request')
         run: |
           set -euo pipefail
-          args=(build --backend buildx --no-tui)
-          if [ "$IMAGE" = hardening ]; then
-            args+=(--oci-output "${RUNNER_TEMP}/${IMAGE}.oci.tar")
-          fi
-          cd "$ROOT" && "$TECT_BIN" "${args[@]}"
+          # Root, because the scan below is `sudo podman run` against the root
+          # store: buildah builds straight into it, so there is no archive to
+          # export and load.
+          cd "$ROOT" && sudo IMAGE_REGISTRY="$IMAGE_REGISTRY" \
+            "$TECT_BIN" build --no-tui
 
       # What the last scan of this image passed, rule by rule. `tect scap`
       # reads it before it rewrites it, so a regression is one red run and then
@@ -321,11 +329,10 @@ jobs:
           [ -s "$datastream" ]
           echo "DATASTREAM=${datastream}" >> "$GITHUB_ENV"
 
-      - name: Load the image under test
+      - name: Confirm the image under test
         if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
-          sudo podman load --input "${RUNNER_TEMP}/${IMAGE}.oci.tar"
           sudo podman image exists "${IMAGE}:latest"
           cp "$DATASTREAM" "${RUNNER_TEMP}/ds.xml"
 
