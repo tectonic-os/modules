@@ -23,6 +23,12 @@ on:
 #               collect order is declared, so two modules writing one path do
 #               not collide, the later silently wins, and the build cannot fail
 #               on overlap. The overlap is reported instead.
+#   bootc-base  the `debian-bootc-base` set alone, closed over `requires`, on a
+#               Debian container image rather than a bootc one. The only leg
+#               that builds a base rather than deriving from one, and the only
+#               deb leg expected to be green: the two `collection` deb legs
+#               below build on `ghcr.io/bootcrew/*-bootc`, whose empty package
+#               database fails them in the kde-desktop layer.
 #   hardening   the hardening set alone, where claims are measured. Its own
 #               image so a failing claim and the set's own composition stay out
 #               of the leg that gates every other module.
@@ -50,6 +56,9 @@ jobs:
           - image: collection
             family: ubuntu
             base: ghcr.io/bootcrew/ubuntu-bootc:latest
+          - image: bootc-base
+            family: debian
+            base: docker.io/library/debian:trixie
           - image: hardening
             family: fedora
             base: quay.io/fedora/fedora-bootc:44
@@ -160,6 +169,10 @@ jobs:
               find . -mindepth 2 -name module.kdl -not -path './.*' \
                 -printf '%h\n' | sed 's|^\./||' | sort > "$NAMES"
               ;;
+            bootc-base)
+              find debian-bootc-base -mindepth 2 -name module.kdl -printf '%h\n' \
+                | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+              ;;
             hardening)
               {
                 printf '%s\n' $HARDENING
@@ -233,6 +246,36 @@ jobs:
               echo "::error::${image} carries ${wrote} of that conforms, expected one"
               exit 1
             fi
+          fi
+          # The tool's catalog names `docker.io/library/debian:trixie` as the
+          # base a module set turns into a bootc image, and trixie cannot be
+          # one: `--composefs-backend` is what reaches a bootloader without
+          # `bootupd`, which Debian does not package, and every bootc carrying
+          # that flag needs libostree >= 2025.3 against trixie's 2025.2.
+          # So the repository is scaffolded on the trixie row, for the
+          # `family "debian"` and the `requires "bootc-base"` the catalog
+          # writes out of it, and then pointed at forky. Repointing rather
+          # than naming forky at `create` is deliberate: forky is not in the
+          # tool's catalog, an uncatalogued base is scaffolded `family
+          # "fedora"`, and keeping the `requires` is what makes this leg prove
+          # on every run that the module set satisfies it. `bases.kdl` at this
+          # collection's root describes the forky row for anyone creating a
+          # repository with the collection already fetched, which is after
+          # `create repo` and so not this.
+          if [ "$IMAGE" = bootc-base ]; then
+            image="${ROOT}/${IMAGE}.image.kdl"
+            from=docker.io/library/debian:trixie
+            to=docker.io/library/debian:forky
+            declared="$(grep -c "^    base \"${from}\"" "$image" || true)"
+            if [ "$declared" != 1 ]; then
+              echo "::error::${image} declares ${declared} images on ${from}; the repoint writes one"
+              exit 1
+            fi
+            sed -i "s|^    base \"${from}\"|    base \"${to}\"|" "$image"
+            grep -q "^        requires \"bootc-base\"$" "$image" || {
+              echo '::error::the repointed base carries no `requires "bootc-base"` to prove'
+              exit 1
+            }
           fi
           while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac

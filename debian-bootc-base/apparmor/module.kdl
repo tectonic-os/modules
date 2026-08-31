@@ -1,0 +1,19 @@
+description "AppArmor: the parser, the profile store and aa-status, which a Debian container image carries none of"
+
+supports "debian"
+
+provides "apparmor-policy"
+
+requires "build-environment"
+
+// The capability is declared by whoever carries the parser, base or module —
+// the rule `graph.rs` implements and the one SELinux has always followed.
+// `ghcr.io/bootcrew/debian-bootc` carries `apparmor_parser` and 105 profiles
+// and so declares it on its own row; `docker.io/library/debian:*` has no
+// parser and an empty `/etc/apparmor.d`, so on that base it is this module's.
+//
+// `apparmor-utils` is here for `aa-status` alone: it is how a booted image is
+// asked what it is actually enforcing, and neither deb base has it.
+packages {
+    debian "apparmor" "apparmor-utils"
+}

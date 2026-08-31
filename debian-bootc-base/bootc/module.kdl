@@ -1,0 +1,58 @@
+description "Everything a Debian container image is missing before it is a bootc image: a kernel, dracut, ostree, bootc itself, an initramfs that carries it, and an ostree-shaped root filesystem"
+
+supports "debian"
+
+provides "bootc-base"
+provides "initramfs-generation"
+
+provides-file "/usr/bin/bootc"
+provides-file "/usr/lib/sysimage/dpkg"
+
+requires "build-environment"
+
+// Debian packages no `bootc` at all, so it is built here. Both halves of the
+// release are pinned: the source and the vendored dependencies its `.cargo`
+// config replaces crates.io with, so the compile reaches no network and every
+// byte of it is held to a hash. `make bin` builds the workspace, xtask
+// included, so the toolchain has to satisfy xtask's rust-version and not just
+// the library's.
+asset "bootc" {
+    pin {
+        renovate datasource="github-releases" depName="bootc-dev/bootc"
+        version "1.16.10"
+        url "https://github.com/bootc-dev/bootc/releases/download/v{version}/bootc-{version}.tar.zstd"
+        sha256 "1819e7bafabc26d0cbf544a94515c17eccfea449ea780527dc8b3d766f49de46"
+    }
+}
+
+asset "bootc-vendor" {
+    pin {
+        renovate datasource="github-releases" depName="bootc-dev/bootc"
+        version "1.16.10"
+        url "https://github.com/bootc-dev/bootc/releases/download/v{version}/bootc-{version}-vendor.tar.zstd"
+        sha256 "79185625d2a44f5e209155cdd1db7a81d3058decaaf6b32453688263f821d400"
+    }
+}
+
+// `bootc install` needs the ostree CLI and nothing else — measured, not
+// assumed: `podman` is not required and the base's own `skopeo` is what bootc
+// 1.16 shells out to. The rest is what a container image lacks and a machine
+// needs to come up: one kernel, its firmware, the boot chain, and the
+// filesystem tools `bootc install to-disk` partitions with. `curl` is here
+// because the collection's own `fetch-helpers.sh` runs on it and no Debian
+// container image ships it, so any deb module with an `asset` needs it first.
+// `man-db` is here for `tect validate-image`: `systemd-analyze verify` renders
+// every `Documentation=man:` a unit declares, and with no man reader in the
+// image it fails the unit rather than skipping the page.
+packages {
+    debian "linux-image-amd64" "firmware-linux-free" \
+           "dracut" "ostree" "composefs" \
+           "systemd-boot" "systemd-boot-efi" "shim-signed" \
+           "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
+           "skopeo" "ca-certificates" "zstd" "curl" \
+           "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
+           "efibootmgr" "cryptsetup-bin" "dmsetup" \
+           "openssh-server" "sudo" "less" "man-db"
+}
+
+fragment position="after"
