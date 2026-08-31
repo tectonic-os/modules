@@ -9,7 +9,7 @@ providers this family actually has. Run from the collection root.
     closure.py <family> <name>...
 
 A requirement no module here provides is left alone, because the base provides
-`mac-policy`, `rechunking` and `initramfs-generation` and `tect` is the one that
+a MAC policy, `rechunking` and `initramfs-generation` and `tect` is the one that
 knows which. Requirements come out before the module that needs them.
 """
 

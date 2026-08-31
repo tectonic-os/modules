@@ -2,8 +2,6 @@ description "The Fedora base family: the build environment every layer runs in, 
 
 supports "fedora"
 
-requires "mac-policy"
-
 provides "build-environment"
 
 helpers "lib/family.sh"

@@ -3,7 +3,7 @@ description "Trivalent, secureblue's hardened Chromium fork"
 supports "fedora"
 
 requires "build-environment"
-requires "mac-policy"
+requires "selinux-policy"
 
 packages {
     fedora "trivalent" "trivalent-qt6-ui" "trivalent-selinux" enablerepo="secureblue"
