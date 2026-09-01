@@ -1,7 +1,18 @@
 description "Hardware token and smartcard auth: YubiKey, FIDO2, PAM and PC/SC"
 
-supports "fedora"
+supports "fedora" "debian"
 
+requires "build-environment"
+
+// `apparmor/usr.sbin.pcscd` is taken only where the image has that MAC, the way
+// a `packages` batch is taken for the base's family, so no `requires` names it:
+// this module works unconfined, and the profile is what the deb families add.
+// Debian's own `apparmor-profiles` ships none for pcscd — checked 2026-09-01 —
+// so nothing here overrides an upstream one.
+//
+// `supports "ubuntu"` is deliberately absent: no leg builds it, and the family
+// owes a `path-exclude` answer first.
 packages {
     fedora "opensc" "pam-u2f" "pam_yubico" "pamu2fcfg" "pcsc-lite" "pcsc-lite-ccid" "yubikey-manager"
+    debian "opensc" "libpam-u2f" "libpam-yubico" "pamu2fcfg" "pcscd" "libccid" "yubikey-manager"
 }

@@ -1,0 +1,45 @@
+# The PC/SC smartcard daemon, confined. The filename is the profile identifier,
+# which is why it is spelled the way /etc/apparmor.d spells one.
+#
+# pcscd is the narrowest daemon this collection ships: one binary, one runtime
+# directory, one class of device, and a driver bundle it dlopens at start. It
+# runs as User=pcscd with RuntimeDirectory=pcscd and --auto-exit, so it is not
+# resident between card operations.
+#
+# Paths measured on docker.io/library/debian:forky, pcscd 2.5.1-1 and
+# libccid 1.8.2-1, 2026-09-01. Fedora puts the same files in the same places.
+abi <abi/4.0>,
+
+include <tunables/global>
+
+profile pcscd /usr/sbin/pcscd {
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # Dropping to the pcscd user, and taking the runtime directory with it.
+  capability chown,
+  capability setgid,
+  capability setuid,
+
+  /usr/sbin/pcscd mr,
+
+  # The reader drivers, dlopened at start. libccid is the only one packaged,
+  # but the bundle directory is the interface and a vendor driver lands there.
+  /etc/libccid_Info.plist r,
+  /etc/reader.conf.d/ r,
+  /etc/reader.conf.d/** r,
+  /usr/lib/pcsc/drivers/ r,
+  /usr/lib/pcsc/drivers/** r,
+  /usr/lib/pcsc/drivers/**.so* mr,
+
+  # The socket systemd hands it, and the pid file beside it.
+  owner /run/pcscd/ rw,
+  owner /run/pcscd/** rw,
+
+  # USB readers, and the enumeration libudev does to find them.
+  /dev/bus/usb/ r,
+  /dev/bus/usb/** rw,
+  /sys/bus/usb/devices/ r,
+  /sys/devices/** r,
+  /run/udev/data/* r,
+}
