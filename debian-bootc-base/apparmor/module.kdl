@@ -14,6 +14,10 @@ requires "build-environment"
 //
 // `apparmor-utils` is here for `aa-status` alone: it is how a booted image is
 // asked what it is actually enforcing, and neither deb base has it.
+//
+// No module preset: Debian's own postinst enables `apparmor.service` — checked,
+// `apparmor.service.dsh-also` is present — so a preset naming it would only
+// restate what the package already did.
 packages {
     debian "apparmor" "apparmor-utils"
 }

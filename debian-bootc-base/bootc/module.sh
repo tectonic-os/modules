@@ -27,6 +27,15 @@ BUILD_DEPS=(
 )
 install_packages "${BUILD_DEPS[@]}"
 
+# Two pins for one release, and nothing else compares them: a bump that moved
+# only one would leave cargo resolving against a vendor tree for a different
+# version, which it would answer by reaching crates.io rather than by failing.
+if [ "$ASSET_BOOTC_VERSION" != "$ASSET_BOOTC_VENDOR_VERSION" ]; then
+	echo "bootc is pinned at ${ASSET_BOOTC_VERSION} and its vendor tarball at" \
+		"${ASSET_BOOTC_VENDOR_VERSION}; both pins move together" >&2
+	exit 1
+fi
+
 src=/tmp/bootc
 fetch_extract "$ASSET_BOOTC_URL" "$ASSET_BOOTC_SHA256" "$src"
 cd "${src}/bootc-${ASSET_BOOTC_VERSION}" || exit
@@ -36,6 +45,19 @@ cd "${src}/bootc-${ASSET_BOOTC_VERSION}" || exit
 # once the two are joined.
 fetch_extract "$ASSET_BOOTC_VENDOR_URL" "$ASSET_BOOTC_VENDOR_SHA256" .
 cat .cargo/vendor-config.toml >>.cargo/config.toml
+
+# The vendored sources are an arrangement, not a guarantee, so say so: offline
+# makes a missing or mismatched vendor tree a build failure rather than a
+# silent fetch, and `--locked` refuses a Cargo.lock that would have to move.
+export CARGO_NET_OFFLINE=true
+export CARGO_BUILD_LOCKED=true
+
+# Upstream's release profile sets `debug = true` because it expects an RPM to
+# split the debuginfo back out, and nothing here does: unstripped, `bootc`
+# alone lands at 326 MB of a 1.15 GB image, and being unpackaged it is invisible
+# to the very scanners this base exists to answer honestly.
+export CARGO_PROFILE_RELEASE_DEBUG=false
+export CARGO_PROFILE_RELEASE_STRIP=true
 
 # `install`, not `install-all`: the extra target is bootc's own integration
 # test binary and the `ostree container` compatibility symlinks, and a product

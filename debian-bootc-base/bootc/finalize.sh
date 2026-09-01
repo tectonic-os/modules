@@ -8,7 +8,10 @@
 # bootc looks for the kernel at /usr/lib/modules/<kver>/vmlinuz, which is not
 # where the Debian package puts it.
 kver="$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n')"
-if [ "$(printf '%s\n' "$kver" | wc -l)" != 1 ]; then
+# `wc -l` counts 1 for the empty string, so no kernel at all would pass a count
+# check and fail later on `cp /boot/vmlinuz-` instead — which is the confusing
+# failure this guard exists to replace.
+if [ -z "$kver" ] || [ "$(printf '%s\n' "$kver" | wc -l)" != 1 ]; then
 	echo "bootc wants exactly one kernel; /usr/lib/modules has: ${kver}" >&2
 	exit 1
 fi
@@ -68,10 +71,25 @@ for pair in \
 done
 # The link is made here as well as in tmpfiles.d because every RUN layer of a
 # derived build executes before systemd-tmpfiles ever does.
-dpkg-query -W -f '${binary:Package}\n' | wc -l
+#
+# And this is the check, not the log line it started as: an admindir `dpkg` can
+# no longer find is not an error, it is an empty database reported at **exit
+# 0**, so the count is the only thing that says the relocation worked.
+packages="$(dpkg-query -W -f '.' | wc -c)"
+if [ "$packages" -eq 0 ]; then
+	echo "the relocated dpkg admindir answers for no packages at all" >&2
+	exit 1
+fi
+echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 
 # ---- what a build must not bake in ----
 : >/etc/machine-id
+# Debian's `dbus.conf` declares /var/lib/dbus/machine-id, so the tool's /var
+# pass skips it *and* leaves the file on disk — and it declares it with `L`
+# rather than `L+`, so tmpfiles will not replace it at boot either. Left alone,
+# every machine installed from this base shares one D-Bus machine ID that does
+# not match its systemd one.
+rm -f /var/lib/dbus/machine-id
 rm -f /etc/ssh/ssh_host_*
 # bootc overlays /etc, and libmount warns "fstab has been modified" at boot
 # over a placeholder the container image ships and no machine wants.

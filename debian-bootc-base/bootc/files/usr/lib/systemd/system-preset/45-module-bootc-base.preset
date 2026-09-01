@@ -1,0 +1,7 @@
+# A bootc machine's /usr is read-only and its packages come from the image, so
+# apt updating itself on a timer can only fail or, worse, half-succeed.
+# dpkg-db-backup writes the admindir to /var/backups, which is a copy of state
+# that now lives under /usr and travels with the image anyway.
+disable apt-daily.timer
+disable apt-daily-upgrade.timer
+disable dpkg-db-backup.timer

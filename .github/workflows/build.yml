@@ -343,12 +343,18 @@ jobs:
             printf '%s\n' "${rows:-None.}"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # A pull request builds fedora alone; push and the schedule take all three
-      # families. The changed leg proves the import and never builds.
+      # A pull request builds fedora alone, plus `bootc-base`: it is the only
+      # leg that compiles a base rather than deriving from one, and its failure
+      # modes — the bootc compile, dracut, what is actually inside the
+      # initramfs — are all invisible to `generate` and lint, so a pull request
+      # that skipped it would not exercise that content at all. It costs a
+      # Rust build on every PR; drop the third clause to take that back.
+      # The changed leg proves the import and never builds.
       - name: Build
         if: >-
           matrix.image != 'changed'
-          && (matrix.family == 'fedora' || github.event_name != 'pull_request')
+          && (matrix.family == 'fedora' || matrix.image == 'bootc-base'
+              || github.event_name != 'pull_request')
         run: |
           set -euo pipefail
           # Root, because the scan below is `sudo podman run` against the root

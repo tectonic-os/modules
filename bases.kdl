@@ -1,6 +1,12 @@
-// Bases this collection describes that the tool's own catalog does not, merged
-// into the picker by `tect create` for anyone whose repo.kdl lists this
-// collection. One entry per image; the tool's row wins where both describe one.
+// Bases this collection describes that the tool's own catalog does not. One
+// entry per image; the tool's row wins where both describe one.
+//
+// `base::catalog()` reads this through `import::cached()`, so it is merged only
+// for a collection already fetched under the consuming repository's
+// `modules/.remote/` — which means it reaches `tect create image` and `check`
+// in an established repository, and **not** `create repo`, whose base picker
+// runs before anything has been fetched. That is why the CI leg scaffolds on a
+// row the tool itself carries and repoints afterwards.
 
 // The tool's catalog names `docker.io/library/debian:trixie` for this, and
 // trixie cannot do it — measured 2026-09-01. Every `bootc` carrying
