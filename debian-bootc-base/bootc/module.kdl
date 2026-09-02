@@ -6,6 +6,8 @@ provides "bootc-base"
 
 provides-file "/usr/bin/bootc"
 provides-file "/usr/lib/sysimage/dpkg"
+// Installed here and enabled by `login-access`, which requires this path.
+provides-file "/usr/sbin/sshd"
 
 requires "build-environment"
 

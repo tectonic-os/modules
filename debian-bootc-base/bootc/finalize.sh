@@ -95,6 +95,42 @@ rm -f /etc/ssh/ssh_host_*
 # over a placeholder the container image ships and no machine wants.
 rm -f /etc/fstab
 
+# Debian's `openssh-server` postinst enables `ssh.service` into
+# `multi-user.target.wants` and generates host keys, so every image from this
+# base would listen on the network because a package said so and not because
+# anyone chose it. **The package stays and the enablement goes**: a machine
+# with no sshd on disk cannot be reached over the network even by someone who
+# has a console, and `login-access` is the module that turns it on. Hooks run
+# before the preset pass, so that module's `enable ssh.service` lands after
+# this and there is no ordering between the two files to get wrong.
+#
+# This is only half of it: a *first* boot runs `systemctl preset-all`, which
+# enables anything no preset file names, and a removal cannot survive that.
+# `45-module-bootc-base.preset` carries the other half.
+rm -f /etc/systemd/system/multi-user.target.wants/ssh.service
+
+# And the rest of what `debian:*` ships as a *container* image, which a machine
+# is not: Docker's own build policy, five files, measured on
+# `docker.io/library/debian:forky` 2026-09-01. `docker-apt-speedup` is
+# `force-unsafe-io`, so dpkg does not fsync — a defensible trade for a build
+# and not for a system that has to survive a power cut. The four in
+# `apt.conf.d` delete the package cache, gzip the indexes, drop translations
+# and refuse suggests. `debian:trixie` and `ghcr.io/bootcrew/debian-bootc`
+# carry the identical set, so this is the deb approach and not one base's
+# mistake.
+#
+# Removed here, after every module's installs, so the build still gets the
+# speedup and only the image is clean. Two siblings of these are *not* here:
+# `/etc/hostname` and `/etc/resolv.conf` are bind-mounted into every `RUN` by
+# the build backend, so a layer cannot write or delete them at all — `rm`
+# answers `Device or resource busy`. `Containerfile.inc` replaces the first
+# with a `COPY`, and `tmpfiles.d/00-resolv-conf.conf` the second at boot.
+rm -f /etc/dpkg/dpkg.cfg.d/docker-apt-speedup
+rm -f /etc/apt/apt.conf.d/docker-clean \
+	/etc/apt/apt.conf.d/docker-gzip-indexes \
+	/etc/apt/apt.conf.d/docker-no-languages \
+	/etc/apt/apt.conf.d/docker-autoremove-suggests
+
 # ---- the ostree-shaped root ----
 # /opt is not here: the tool's own finalize relocates it and restores the
 # base's directory afterwards, so a symlink written now would be thrown away.

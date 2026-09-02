@@ -5,3 +5,14 @@
 disable apt-daily.timer
 disable apt-daily-upgrade.timer
 disable dpkg-db-backup.timer
+
+# `finalize.sh` removes the `multi-user.target.wants/ssh.service` symlink the
+# `openssh-server` postinst writes, and that is enough for every boot that is
+# not a first boot. It is not enough for one that is: systemd runs `preset-all`
+# then, and a unit no preset file names is *enabled* by the built-in default —
+# measured 2026-09-02, `Applying preset policy` followed by `Created symlink
+# '/etc/systemd/system/sockets.target.wants/ssh.socket'`, and the machine
+# listened on 22 having been told not to. A removal cannot survive that and a
+# policy line can. `login-access` enables `ssh.service` and never the socket,
+# so this line has nothing to argue with.
+disable ssh.socket
