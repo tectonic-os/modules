@@ -10,3 +10,14 @@ supports "debian"
 // there is no ordering between the two files to get wrong — this is the only
 // preset in the collection that names `ssh.service`.
 requires-file "/usr/sbin/sshd"
+
+// Enabling `ssh.service` without an authorized key leaves the network half
+// dormant: the daemon listens and nobody can answer it. This is the key that
+// closes it, and it is the repository's rather than the module's — `tect create
+// key ssh` writes the pair, the public half ships at the path below, and the
+// private half stays on the machine that made it and is never committed.
+key "ssh" {
+    generator "ssh-keygen"
+    public "/usr/lib/tectonic/authorized_keys"
+    private "id_ed25519"
+}
