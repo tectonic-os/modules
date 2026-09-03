@@ -11,10 +11,17 @@
 #
 # POSIX shell and `sort`, deliberately: the deb families' default awk is mawk,
 # which has neither ENDFILE nor the escapes a menu needs quoting with.
+# Takes an optional root: the units pass none and render this machine's own
+# /boot, and an installer passes the target it still has mounted, because
+# nothing renders the menu during an install — bootupd runs before the entries
+# are written. The paths *inside* the menu are the BLS entry's own and are
+# absolute against the filesystem GRUB reads, so a prefix here never reaches
+# them.
 set -eu
 
-entries=/boot/loader/entries
-grubdir=/boot/grub2
+root="${1:-}"
+entries="${root}/boot/loader/entries"
+grubdir="${root}/boot/grub2"
 out="${grubdir}/custom.cfg"
 [ -d "$entries" ] || exit 0
 [ -d "$grubdir" ] || exit 0
