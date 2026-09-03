@@ -84,6 +84,29 @@ echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 
 # ---- what a build must not bake in ----
 : >/etc/machine-id
+# Both bases arrive with a couple of dozen directories under /run, created by
+# package scripts at unpack time and recreated at boot by a tmpfiles rule or by
+# the service that wants them — `bootc container lint` reports the lot as
+# `nonempty-run-tmp`. Measured on `debian:forky` as well as `ubuntu:26.04`, so
+# this is not the Ubuntu half of this hook. `/tmp` is already empty and stays
+# that way: the tool mounts a tmpfs over it for every layer.
+#
+# `secrets` and `.containerenv` are the build backend's own mounts, the same
+# shape as the bind-mounted /etc files below — `rm` answers `Device or resource
+# busy` on them, and neither is committed to a layer anyway. A plain
+# `rm -rf /run/*` therefore fails the build rather than emptying it.
+find /run -mindepth 1 -maxdepth 1 ! -name secrets ! -name .containerenv \
+	-exec rm -rf {} +
+
+# `ubuntu:*` ships a uid 1000 account in the `sudo` group, locked, owning no
+# file anywhere outside the /home this hook deletes below, and declared by no
+# sysusers.d rule — the other half of what the lint reports. A base is not
+# where a login comes from; `login-access` is. So it goes rather than being
+# left for somebody to find. `debian:*` ships no such account, which is what
+# the guard is for.
+if getent passwd ubuntu >/dev/null; then
+	userdel ubuntu
+fi
 # Debian's `dbus.conf` declares /var/lib/dbus/machine-id, so the tool's /var
 # pass skips it *and* leaves the file on disk — and it declares it with `L`
 # rather than `L+`, so tmpfiles will not replace it at boot either. Left alone,
@@ -94,6 +117,42 @@ rm -f /etc/ssh/ssh_host_*
 # bootc overlays /etc, and libmount warns "fstab has been modified" at boot
 # over a placeholder the container image ships and no machine wants.
 rm -f /etc/fstab
+
+# Debian's `openssh-server` postinst enables `ssh.service` into
+# `multi-user.target.wants` and generates host keys, so every image from this
+# base would listen on the network because a package said so and not because
+# anyone chose it. **The package stays and the enablement goes**: a machine
+# with no sshd on disk cannot be reached over the network even by someone who
+# has a console, and `login-access` is the module that turns it on. Hooks run
+# before the preset pass, so that module's `enable ssh.service` lands after
+# this and there is no ordering between the two files to get wrong.
+#
+# This is only half of it: a *first* boot runs `systemctl preset-all`, which
+# enables anything no preset file names, and a removal cannot survive that.
+# `45-module-bootc-base.preset` carries the other half.
+rm -f /etc/systemd/system/multi-user.target.wants/ssh.service
+
+# And the rest of what `debian:*` ships as a *container* image, which a machine
+# is not: Docker's own build policy, five files, measured on
+# `docker.io/library/debian:forky` 2026-09-01. `docker-apt-speedup` is
+# `force-unsafe-io`, so dpkg does not fsync — a defensible trade for a build
+# and not for a system that has to survive a power cut. The four in
+# `apt.conf.d` delete the package cache, gzip the indexes, drop translations
+# and refuse suggests. `debian:trixie` and `ghcr.io/bootcrew/debian-bootc`
+# carry the identical set, so this is the deb approach and not one base's
+# mistake.
+#
+# Removed here, after every module's installs, so the build still gets the
+# speedup and only the image is clean. Two siblings of these are *not* here:
+# `/etc/hostname` and `/etc/resolv.conf` are bind-mounted into every `RUN` by
+# the build backend, so a layer cannot write or delete them at all — `rm`
+# answers `Device or resource busy`. `Containerfile.inc` replaces the first
+# with a `COPY`, and `tmpfiles.d/00-resolv-conf.conf` the second at boot.
+rm -f /etc/dpkg/dpkg.cfg.d/docker-apt-speedup
+rm -f /etc/apt/apt.conf.d/docker-clean \
+	/etc/apt/apt.conf.d/docker-gzip-indexes \
+	/etc/apt/apt.conf.d/docker-no-languages \
+	/etc/apt/apt.conf.d/docker-autoremove-suggests
 
 # ---- the ostree-shaped root ----
 # /opt is not here: the tool's own finalize relocates it and restores the

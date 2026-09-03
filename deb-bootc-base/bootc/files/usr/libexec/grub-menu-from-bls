@@ -1,0 +1,78 @@
+#!/bin/sh
+# Renders /boot/loader/entries into a GRUB menu, because no deb GRUB can read
+# them itself: `blscfg` is Fedora's command and `blsuki.mod` ships as a module
+# the signed image does not carry and cannot load, since Secure Boot prohibits
+# loading any module at all.
+#
+# Written to custom.cfg, the extension point bootupd's own static config
+# already sources, so nothing here fights bootupd for grub.cfg. Entries are
+# ordered by BLS sort-key, which is what decides the default: bootc gives the
+# newest deployment the lowest one.
+#
+# POSIX shell and `sort`, deliberately: the deb families' default awk is mawk,
+# which has neither ENDFILE nor the escapes a menu needs quoting with.
+# Takes an optional root: the units pass none and render this machine's own
+# /boot, and an installer passes the target it still has mounted, because
+# nothing renders the menu during an install — bootupd runs before the entries
+# are written. The paths *inside* the menu are the BLS entry's own and are
+# absolute against the filesystem GRUB reads, so a prefix here never reaches
+# them.
+set -eu
+
+root="${1:-}"
+entries="${root}/boot/loader/entries"
+grubdir="${root}/boot/grub2"
+out="${grubdir}/custom.cfg"
+[ -d "$entries" ] || exit 0
+[ -d "$grubdir" ] || exit 0
+
+fields() {
+	for conf in "$entries"/*.conf; do
+		[ -f "$conf" ] || continue
+		title=''
+		kernel=''
+		initrd=''
+		options=''
+		sort_key=''
+		while read -r key value; do
+			case "$key" in
+				title) title="$value" ;;
+				linux) kernel="$value" ;;
+				initrd) initrd="$value" ;;
+				options) options="$value" ;;
+				sort-key) sort_key="$value" ;;
+			esac
+		done <"$conf"
+		# An entry with no kernel is not one; skipping it is what keeps a
+		# half-written file from emptying the menu.
+		[ -n "$kernel" ] || continue
+		printf '%s\t%s\t%s\t%s\t%s\n' \
+			"${sort_key:-${conf##*/}}" "${title:-${conf##*/}}" \
+			"$kernel" "$initrd" "$options"
+	done | sort
+}
+
+tmp="${out}.new"
+: >"$tmp"
+n=0
+fields | while IFS="$(printf '\t')" read -r _ title kernel initrd options; do
+	# `if`, not `&&`: a false test ends an AND-list non-zero, and `set -e`
+	# would take that as the whole render failing on the second entry.
+	if [ "$n" -eq 0 ]; then
+		printf "set default='bls-0'\n" >>"$tmp"
+	fi
+	printf "menuentry '%s' --id 'bls-%s' {\n" "$title" "$n" >>"$tmp"
+	printf '  linux %s %s\n' "$kernel" "$options" >>"$tmp"
+	if [ -n "$initrd" ]; then
+		printf '  initrd %s\n' "$initrd" >>"$tmp"
+	fi
+	printf '}\n' >>"$tmp"
+	n=$((n + 1))
+done
+
+if [ ! -s "$tmp" ]; then
+	rm -f "$tmp"
+	echo "no usable BLS entry under ${entries}" >&2
+	exit 1
+fi
+mv -f "$tmp" "$out"

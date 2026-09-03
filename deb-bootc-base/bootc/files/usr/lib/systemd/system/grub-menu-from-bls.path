@@ -1,0 +1,8 @@
+[Unit]
+Description=Watch the BLS entries for a staged deployment
+
+[Path]
+PathChanged=/boot/loader/entries
+
+[Install]
+WantedBy=multi-user.target

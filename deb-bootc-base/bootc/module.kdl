@@ -1,11 +1,14 @@
-description "Everything a Debian container image is missing before it is a bootc image: a kernel, dracut, ostree, bootc itself, an initramfs that carries it, and an ostree-shaped root filesystem"
+description "Everything a deb-family container image is missing before it is a bootc image: a kernel, dracut, ostree, bootc itself, an initramfs that carries it, and an ostree-shaped root filesystem"
 
-supports "debian"
+supports "debian" "ubuntu"
 
 provides "bootc-base"
 
 provides-file "/usr/bin/bootc"
+provides-file "/usr/bin/bootupctl"
 provides-file "/usr/lib/sysimage/dpkg"
+// Installed here and enabled by `login-access`, which requires this path.
+provides-file "/usr/sbin/sshd"
 
 requires "build-environment"
 
@@ -19,7 +22,7 @@ requires "build-environment"
 // `requires` the capability would have its own finalize hook run *after* the
 // initramfs was built rather than before.
 
-// Debian packages no `bootc` at all, so it is built here. Both halves of the
+// Neither family packages `bootc`, so it is built here. Both halves of the
 // release are pinned: the source and the vendored dependencies its `.cargo`
 // config replaces crates.io with, so the compile reaches no network and every
 // byte of it is held to a hash. `make bin` builds the workspace, xtask
@@ -43,22 +46,65 @@ asset "bootc-vendor" {
     }
 }
 
+// `bootupd` is the only thing `bootc install` will install GRUB with — every
+// other arm either routes through it or writes systemd-boot — and neither
+// family packages it any more than they package `bootc`. Same two-pin shape as
+// above: the `.crate` is the released source and the vendor tarball is every
+// dependency, so the compile reaches no network and every byte is held to a
+// hash.
+asset "bootupd" {
+    pin {
+        renovate datasource="github-releases" depName="coreos/bootupd"
+        version "0.3.1"
+        url "https://github.com/coreos/bootupd/releases/download/v{version}/bootupd-{version}.crate"
+        sha256 "335ac06a450d59f4154a81ed96186e6296c799a584cfa3c3916c7a0023498c38"
+    }
+}
+
+asset "bootupd-vendor" {
+    pin {
+        renovate datasource="github-releases" depName="coreos/bootupd"
+        version "0.3.1"
+        url "https://github.com/coreos/bootupd/releases/download/v{version}/bootupd-{version}-vendor.tar.zstd"
+        sha256 "b9348f75a7c94f727e3a7bf2487113348431ea69c6d757ec3edcd626c0cb8576"
+    }
+}
+
 // `bootc install` needs the ostree CLI and nothing else — measured, not
 // assumed: `podman` is not required and the base's own `skopeo` is what bootc
 // 1.16 shells out to. The rest is what a container image lacks and a machine
 // needs to come up: one kernel, its firmware, the boot chain, and the
 // filesystem tools `bootc install to-disk` partitions with. `curl` is here
-// because the collection's own `fetch-helpers.sh` runs on it and no Debian
+// because the collection's own `fetch-helpers.sh` runs on it and neither base
 // container image ships it, so any deb module with an `asset` needs it first.
 // `man-db` is here for `tect validate-image`: `systemd-analyze verify` renders
 // every `Documentation=man:` a unit declares, and with no man reader in the
 // image it fails the unit rather than skipping the page. `openssh-server` is
 // how anyone reaches a machine installed from this base at all, `sudo` is how
 // they become root on it, and `less` is what `journalctl` pages through.
+//
+// The schema takes one family per line, so the two lists are repeated rather
+// than shared, and they differ in exactly two entries. Ubuntu resolves every
+// other name unchanged; it packages no `linux-image-amd64` and no
+// `firmware-linux-free`. `linux-image-generic` is the metapackage that tracks
+// its kernel, and `linux-firmware-minimal` is the **nearest** firmware match
+// rather than an equivalent one — it carried the qemu boot this base was
+// proved by on 2026-09-03 and nothing has yet compared what it holds against
+// Debian's on hardware.
 packages {
     debian "linux-image-amd64" "firmware-linux-free" \
            "dracut" "ostree" "composefs" \
-           "systemd-boot" "systemd-boot-efi" "shim-signed" \
+           "systemd-boot" "systemd-boot-efi" \
+           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
+           "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
+           "skopeo" "ca-certificates" "zstd" "curl" \
+           "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
+           "efibootmgr" "cryptsetup-bin" "dmsetup" \
+           "openssh-server" "sudo" "less" "man-db"
+    ubuntu "linux-image-generic" "linux-firmware-minimal" \
+           "dracut" "ostree" "composefs" \
+           "systemd-boot" "systemd-boot-efi" \
+           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
            "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
            "skopeo" "ca-certificates" "zstd" "curl" \
            "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \

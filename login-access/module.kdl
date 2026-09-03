@@ -1,0 +1,23 @@
+description "The two ways into a machine, neither of which a base should decide for one: ssh.service enabled, and a console account a hypervisor can create with systemd credentials"
+
+supports "debian"
+
+// The package is the base's and the enablement is this module's, which is the
+// split the collection wants: `openssh-server` stays on every image so that a
+// machine is recoverable over the network *if* someone turns it on, and no
+// image listens because a Debian postinst said so. The base undoes that
+// postinst in its own finalize hook, and hooks run before the preset pass, so
+// there is no ordering between the two files to get wrong — this is the only
+// preset in the collection that names `ssh.service`.
+requires-file "/usr/sbin/sshd"
+
+// Enabling `ssh.service` without an authorized key leaves the network half
+// dormant: the daemon listens and nobody can answer it. This is the key that
+// closes it, and it is the repository's rather than the module's — `tect create
+// key ssh` writes the pair, the public half ships at the path below, and the
+// private half stays on the machine that made it and is never committed.
+key "ssh" {
+    generator "ssh-keygen"
+    public "/usr/lib/tectonic/authorized_keys"
+    private "id_ed25519"
+}

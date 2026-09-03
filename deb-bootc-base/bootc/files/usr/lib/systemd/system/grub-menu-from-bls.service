@@ -1,0 +1,10 @@
+[Unit]
+Description=Render the GRUB menu from the BLS entries
+ConditionPathIsDirectory=/boot/loader/entries
+
+[Service]
+Type=oneshot
+ExecStart=/usr/libexec/grub-menu-from-bls
+
+[Install]
+WantedBy=multi-user.target

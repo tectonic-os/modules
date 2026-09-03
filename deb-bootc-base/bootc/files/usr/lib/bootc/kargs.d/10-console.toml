@@ -1,0 +1,10 @@
+# The base declares no console at all, so a machine installed from it is mute
+# the moment the firmware hands off: measured 2026-09-01, where the first boot
+# only spoke because the systemd-boot entry on the ESP was hand-edited. The
+# karg is the fix and the ESP edit was the diagnostic.
+#
+# Both consoles, `tty0` first. The kernel writes its own messages to every
+# console it is given, and userspace `/dev/console` is the *last* one named —
+# so a headless install gets its login prompt on the serial line, and a machine
+# with a screen still shows the whole boot on it either way.
+kargs = ["console=tty0", "console=ttyS0,115200n8"]
