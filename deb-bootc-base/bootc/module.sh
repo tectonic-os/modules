@@ -138,7 +138,14 @@ grub_dir="/usr/lib/efi/grub2/$(dpkg-query -W -f '${Version}' grub-efi-amd64-sign
 
 install -D -m 0644 /usr/lib/shim/shimx64.efi.signed "${shim_dir}/${vendor}/shimx64.efi"
 install -D -m 0644 /usr/lib/shim/shimx64.efi.signed "${shim_dir}/BOOT/BOOTX64.EFI"
-install -D -m 0644 /usr/lib/shim/fbx64.efi.signed "${shim_dir}/BOOT/fbx64.efi"
+# Debian signs the fallback and Ubuntu does not ship a signed one at all —
+# only `fbx64.efi`, the same split as its MokManager. An unsigned fallback
+# cannot load under Secure Boot, so Ubuntu goes without: the fallback exists to
+# write an NVRAM entry from `BOOTX64.CSV`, and the removable path boots without
+# one, which is the path `--generic-image` leaves as the only one anyway.
+if [ -f /usr/lib/shim/fbx64.efi.signed ]; then
+	install -D -m 0644 /usr/lib/shim/fbx64.efi.signed "${shim_dir}/BOOT/fbx64.efi"
+fi
 if [ -f /usr/lib/shim/mmx64.efi.signed ]; then
 	install -D -m 0644 /usr/lib/shim/mmx64.efi.signed "${shim_dir}/${vendor}/mmx64.efi"
 fi
