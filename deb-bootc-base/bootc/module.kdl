@@ -5,6 +5,7 @@ supports "debian" "ubuntu"
 provides "bootc-base"
 
 provides-file "/usr/bin/bootc"
+provides-file "/usr/bin/bootupctl"
 provides-file "/usr/lib/sysimage/dpkg"
 // Installed here and enabled by `login-access`, which requires this path.
 provides-file "/usr/sbin/sshd"
@@ -45,6 +46,30 @@ asset "bootc-vendor" {
     }
 }
 
+// `bootupd` is the only thing `bootc install` will install GRUB with — every
+// other arm either routes through it or writes systemd-boot — and neither
+// family packages it any more than they package `bootc`. Same two-pin shape as
+// above: the `.crate` is the released source and the vendor tarball is every
+// dependency, so the compile reaches no network and every byte is held to a
+// hash.
+asset "bootupd" {
+    pin {
+        renovate datasource="github-releases" depName="coreos/bootupd"
+        version "0.3.1"
+        url "https://github.com/coreos/bootupd/releases/download/v{version}/bootupd-{version}.crate"
+        sha256 "335ac06a450d59f4154a81ed96186e6296c799a584cfa3c3916c7a0023498c38"
+    }
+}
+
+asset "bootupd-vendor" {
+    pin {
+        renovate datasource="github-releases" depName="coreos/bootupd"
+        version "0.3.1"
+        url "https://github.com/coreos/bootupd/releases/download/v{version}/bootupd-{version}-vendor.tar.zstd"
+        sha256 "b9348f75a7c94f727e3a7bf2487113348431ea69c6d757ec3edcd626c0cb8576"
+    }
+}
+
 // `bootc install` needs the ostree CLI and nothing else — measured, not
 // assumed: `podman` is not required and the base's own `skopeo` is what bootc
 // 1.16 shells out to. The rest is what a container image lacks and a machine
@@ -69,7 +94,8 @@ asset "bootc-vendor" {
 packages {
     debian "linux-image-amd64" "firmware-linux-free" \
            "dracut" "ostree" "composefs" \
-           "systemd-boot" "systemd-boot-efi" "shim-signed" \
+           "systemd-boot" "systemd-boot-efi" \
+           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
            "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
            "skopeo" "ca-certificates" "zstd" "curl" \
            "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
@@ -77,7 +103,8 @@ packages {
            "openssh-server" "sudo" "less" "man-db"
     ubuntu "linux-image-generic" "linux-firmware-minimal" \
            "dracut" "ostree" "composefs" \
-           "systemd-boot" "systemd-boot-efi" "shim-signed" \
+           "systemd-boot" "systemd-boot-efi" \
+           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
            "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
            "skopeo" "ca-certificates" "zstd" "curl" \
            "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \

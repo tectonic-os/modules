@@ -16,3 +16,11 @@ disable dpkg-db-backup.timer
 # policy line can. `login-access` enables `ssh.service` and never the socket,
 # so this line has nothing to argue with.
 disable ssh.socket
+
+# The BLS entries bootc writes have no reader on a deb GRUB — `blscfg` is
+# Fedora's command and the signed image loads no modules under Secure Boot — so
+# the menu is rendered from them instead. The path unit is what keeps an
+# upgrade bootable: `bootc upgrade` stages a new entry and the menu is
+# rewritten before anyone reboots into it.
+enable grub-menu-from-bls.service
+enable grub-menu-from-bls.path
