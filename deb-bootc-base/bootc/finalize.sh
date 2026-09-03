@@ -84,6 +84,29 @@ echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 
 # ---- what a build must not bake in ----
 : >/etc/machine-id
+# Both bases arrive with a couple of dozen directories under /run, created by
+# package scripts at unpack time and recreated at boot by a tmpfiles rule or by
+# the service that wants them — `bootc container lint` reports the lot as
+# `nonempty-run-tmp`. Measured on `debian:forky` as well as `ubuntu:26.04`, so
+# this is not the Ubuntu half of this hook. `/tmp` is already empty and stays
+# that way: the tool mounts a tmpfs over it for every layer.
+#
+# `secrets` and `.containerenv` are the build backend's own mounts, the same
+# shape as the bind-mounted /etc files below — `rm` answers `Device or resource
+# busy` on them, and neither is committed to a layer anyway. A plain
+# `rm -rf /run/*` therefore fails the build rather than emptying it.
+find /run -mindepth 1 -maxdepth 1 ! -name secrets ! -name .containerenv \
+	-exec rm -rf {} +
+
+# `ubuntu:*` ships a uid 1000 account in the `sudo` group, locked, owning no
+# file anywhere outside the /home this hook deletes below, and declared by no
+# sysusers.d rule — the other half of what the lint reports. A base is not
+# where a login comes from; `login-access` is. So it goes rather than being
+# left for somebody to find. `debian:*` ships no such account, which is what
+# the guard is for.
+if getent passwd ubuntu >/dev/null; then
+	userdel ubuntu
+fi
 # Debian's `dbus.conf` declares /var/lib/dbus/machine-id, so the tool's /var
 # pass skips it *and* leaves the file on disk — and it declares it with `L`
 # rather than `L+`, so tmpfiles will not replace it at boot either. Left alone,
