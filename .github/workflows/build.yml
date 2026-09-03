@@ -285,6 +285,15 @@ jobs:
           while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac
             grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
+            # `create image` seeds whatever the base `requires` — since
+            # v0.6.21 it names the modules that provide the capability and
+            # writes them in — so a name can already be listed before this
+            # loop reaches it, and importing it twice is an error. Checked
+            # against the file rather than against a list of known seeds,
+            # because that set grows with the catalog.
+            if grep -q "module \"${name}\"" "${ROOT}/${IMAGE}.image.kdl"; then
+              continue
+            fi
             "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
               --image "$IMAGE" --no-tui
             case "$name" in
