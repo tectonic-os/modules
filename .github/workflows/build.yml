@@ -53,9 +53,12 @@ jobs:
           - image: collection
             family: fedora
             base: quay.io/fedora/fedora-bootc:44
-          - image: collection
-            family: debian
-            base: docker.io/library/debian:forky
+          # Off for NEXT-42 stage 5: this leg carries the largest module set and
+          # is the queue's bottleneck while proving-ground publishes and upgrades
+          # a deb image. Put it back when that stage is archived.
+          # - image: collection
+          #   family: debian
+          #   base: docker.io/library/debian:forky
           - image: bootc-base
             family: debian
             base: docker.io/library/debian:forky
