@@ -21,8 +21,41 @@ set -eu
 
 root="${1:-}"
 entries="${root}/boot/loader/entries"
+staged="${root}/boot/loader/entries.staged"
 grubdir="${root}/boot/grub2"
 out="${grubdir}/custom.cfg"
+
+# **`bootc upgrade` never writes to `loader/entries`.** It writes the next
+# boot's menu to `loader/entries.staged` and starts
+# `bootc-finalize-staged.service`, whose `ExecStop` renames the one over the
+# other at *shutdown* — `bootc_composefs/boot.rs:901`, "This will be atomically
+# renamed to 'loader/entries' on shutdown/reboot", and `service.rs:13` for the
+# `systemctl start` that arms it. So GRUB reads a menu rendered from the
+# *previous* entries on the way back up, and the machine boots the old
+# deployment while looking perfectly healthy.
+#
+# Measured 2026-09-04: an upgrade landed, the reboot took the old deployment,
+# and across that whole boot the renderer had run exactly once — at startup,
+# before bootc wrote anything. A `.path` unit on `loader/entries` cannot win
+# that race; there is nothing to watch until it is too late to matter.
+#
+# Rendering from the staged directory closes it, and is exact rather than a
+# guess: the same code writes *both* entries there, the new deployment at
+# `FILENAME_PRIORITY_PRIMARY` and the currently booted one at `SECONDARY`, so it
+# is the whole of the next menu and not a fragment of it.
+#
+# A cancelled upgrade needs nothing special. `update.rs:82` removes the staged
+# directory, the `.path` unit sees that removal like any other change, and this
+# falls back to `entries` on the next render.
+if [ -d "$staged" ]; then
+	for conf in "$staged"/*.conf; do
+		if [ -f "$conf" ]; then
+			entries="$staged"
+		fi
+		break
+	done
+fi
+
 [ -d "$entries" ] || exit 0
 [ -d "$grubdir" ] || exit 0
 
@@ -47,10 +80,18 @@ out="${grubdir}/custom.cfg"
 # Put back afterwards, on success or failure, and only if this changed it —
 # bootc leaves /boot writable after its own remount, and a menu renderer is not
 # the thing that should quietly make that permanent on every boot.
+#
+# **`bind` on both, and it is load-bearing rather than tidiness.** Since
+# `sysroot-boot-rw.service` there are *two* mounts of this one filesystem —
+# `/boot` read-only and `/sysroot/boot` writable — and a plain
+# `mount -o remount,ro /boot` changes the **superblock**, which would take
+# `/sysroot/boot` read-only with it and break the next `bootc upgrade`.
+# `remount,bind,` sets the flag on this mount alone and never touches the
+# superblock, which that service has already left writable.
 if [ -z "$root" ] && mountpoint -q /boot \
 	&& findmnt -no OPTIONS /boot | grep -q '^ro\(,\|$\)'; then
-	mount -o remount,rw /boot
-	trap 'mount -o remount,ro /boot 2>/dev/null || :' EXIT INT TERM
+	mount -o remount,bind,rw /boot
+	trap 'mount -o remount,bind,ro /boot 2>/dev/null || :' EXIT INT TERM
 fi
 
 fields() {

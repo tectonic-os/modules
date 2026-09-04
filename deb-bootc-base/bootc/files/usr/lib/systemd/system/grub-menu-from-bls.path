@@ -1,8 +1,22 @@
 [Unit]
 Description=Watch the BLS entries for a staged deployment
 
+# Two directories, and the second is the one that actually catches an upgrade.
+#
+# `bootc upgrade` never writes to `loader/entries`: it writes the next boot's
+# menu to `loader/entries.staged` and lets `bootc-finalize-staged.service`
+# rename it into place at *shutdown*. A watch on `entries` alone cannot fire
+# before the reboot that needs the menu — measured 2026-09-04, an upgrade
+# landed, the machine rebooted into the *old* deployment, and the renderer had
+# run only at startup that whole boot.
+#
+# `entries.staged` is absent most of the time, which is fine and is why this
+# works: systemd watches the nearest existing parent and fires when the
+# directory appears. Its removal when an upgrade is cancelled is a change this
+# sees too, so the fallback render happens on its own.
 [Path]
 PathChanged=/boot/loader/entries
+PathChanged=/boot/loader/entries.staged
 
 [Install]
 WantedBy=multi-user.target

@@ -30,6 +30,13 @@ enable grub-menu-from-bls.path
 # rather than a wrong mount — which is why this is unconditional here.
 enable sysroot-boot.mount
 
+# And made writable, because bootc writes its BLS entries through that bind and
+# it inherits `ro` from the `/boot` bootc itself mounts read-only. Without this
+# `bootc upgrade` dies on `Writing BLS entries to disk: Read-only file system`
+# — measured 2026-09-04 — and the unit's own `ConditionPathIsMountPoint` is
+# what keeps it off a layout where /boot lives inside the root filesystem.
+enable sysroot-boot-rw.service
+
 # Debian enables `systemd-resolved` from the package postinst and enables
 # nothing that configures a link, so without this line an installed machine has
 # no address and `bootc upgrade` cannot reach a registry — measured 2026-09-04,

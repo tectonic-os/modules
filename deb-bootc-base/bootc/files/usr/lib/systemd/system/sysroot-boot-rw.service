@@ -1,0 +1,51 @@
+# bootc writes its BLS entries through `/sysroot/boot`, and `sysroot-boot.mount`
+# hands it a read-only bind.
+#
+# `MS_RDONLY` is per-mount, which is the fact this turns on. `/boot` is mounted
+# read-only by bootc's own karg — `install.rs:2688`, *"Ensure that we mount
+# /boot readonly because it's really owned by bootc/ostree and we don't want
+# e.g. apt/dnf trying to mutate it"* — so the bind inherits it, and remounting
+# `/boot` writable does **not** propagate to the bind. Measured 2026-09-04:
+# `mount -o remount,rw /boot` left `bootc upgrade` failing with the identical
+# `Writing BLS entries to disk: Read-only file system (os error 30)`, and only
+# `mount -o remount,rw /sysroot/boot` let it through.
+#
+# **This restores the invariant bootc assumes rather than working around it.**
+# `store/mod.rs:506` documents the boot directory as `/sysroot/boot` for GRUB,
+# and it is writable in every configuration upstream actually exercises: the
+# ostree backend mounts the boot partition there itself, and a composefs
+# `install to-disk` keeps /boot inside the read-write physical root. Only
+# composefs *plus* a separate /boot partition — which is fisherman's
+# partitioning, not bootc's — lands the filesystem at `/boot` and leaves
+# `/sysroot/boot` empty.
+#
+# The three steps are ordered and none is redundant. A bind cannot be made
+# writable over a read-only superblock, so the superblock goes first; the bind
+# is then made writable on its own; and `/boot` is put back to read-only as a
+# *per-mount* flag, which leaves the superblock writable and bootc's stated
+# intent intact. That is the arrangement ostree has always used — the physical
+# boot writable at `/sysroot/boot`, the deployment's view of it read-only.
+#
+# `bind` on the third line is what makes it per-mount. Without it the remount
+# would take the superblock read-only again and undo the second line.
+[Unit]
+Description=Make the boot partition writable where bootc writes its entries
+After=sysroot-boot.mount
+Requires=sysroot-boot.mount
+# The real guard, and it must not be relaxed. On a disk written by `bootc
+# install to-disk` /boot lives *inside* the root filesystem and `/sysroot/boot`
+# is not a mountpoint at all — remounting there would remount the **root
+# filesystem** writable. `sysroot-boot.mount` carries its own layout conditions
+# and is skipped on that layout, so asking whether the bind actually happened is
+# the honest form of "is this the separate-/boot layout".
+ConditionPathIsMountPoint=/sysroot/boot
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/bin/mount -o remount,rw /boot
+ExecStart=/usr/bin/mount -o remount,bind,rw /sysroot/boot
+ExecStart=/usr/bin/mount -o remount,bind,ro /boot
+
+[Install]
+WantedBy=local-fs.target
