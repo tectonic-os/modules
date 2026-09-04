@@ -1,0 +1,49 @@
+# bootc reads the boot entries from the *physical* sysroot, and on a machine
+# with /boot on its own partition nothing mounts them there.
+#
+# Measured 2026-09-04 on a disk written by `tect install`: `/proc/cmdline`
+# carries `systemd.mount-extra=UUID=…:/boot:auto:ro`, written by bootc's own
+# composefs install, and `systemd-fstab-generator` turns that into `boot.mount`
+# at `/boot`. There is no `/etc/fstab` on the machine at all. So `/boot` holds
+# `loader/entries` and `/sysroot/boot` is an empty directory —
+# `findmnt -T /sysroot/boot` answers `/dev/vda3 /sysroot`, the root filesystem,
+# because it is not a mountpoint. `bootc status` then fails with `Getting
+# sorted Type1 boot entries: No such file or directory`, and so does
+# `bootc upgrade`, which dies at storage initialisation before it does
+# anything: **a machine that installs and cannot update.**
+#
+# A bind and not a second device mount, because the UUID is the installer's and
+# is unknowable when this image is built — which is also why this cannot be a
+# `kargs.d` line.
+#
+# The condition is the point rather than a safety net. A disk written by
+# `bootc install to-disk` keeps /boot *inside* the root filesystem — measured
+# the same day, that cmdline carries no `systemd.mount-extra` and no `boot=` at
+# all — so `/sysroot/boot` already holds the entries there and this must not
+# stack a bind of the directory onto itself. Asking whether the entries are
+# already visible is the honest form of "is this the separate-/boot layout",
+# and it stays true if the layout changes for some other reason.
+#
+# `RequiresMountsFor=` and not `After=boot.mount`, which is a real difference
+# and not a style choice. `boot.mount` does not exist in the image —
+# `systemd-fstab-generator` writes it at boot from the karg — so naming it makes
+# `systemd-analyze verify` exit non-zero, and `tect validate-image` then reads
+# every line the verify printed. That pulls in two `CPUAccounting=` warnings
+# from the `xfsprogs` units, which are nothing to do with this unit and cannot
+# be excepted, and the build fails on them. `RequiresMountsFor=/boot` asks for
+# the same ordering against whatever mounts that path at runtime, names no
+# unit, and verifies clean — measured, exit 0.
+[Unit]
+Description=Mount the boot partition where bootc reads its entries
+RequiresMountsFor=/boot
+ConditionPathIsDirectory=/sysroot/boot
+ConditionPathIsDirectory=!/sysroot/boot/loader
+
+[Mount]
+What=/boot
+Where=/sysroot/boot
+Type=none
+Options=bind
+
+[Install]
+WantedBy=local-fs.target

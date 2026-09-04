@@ -24,3 +24,8 @@ disable ssh.socket
 # rewritten before anyone reboots into it.
 enable grub-menu-from-bls.service
 enable grub-menu-from-bls.path
+
+# The boot partition mounted where bootc reads it. Its own conditions decide
+# whether it runs, so enabling it on a layout that does not need it is a no-op
+# rather than a wrong mount — which is why this is unconditional here.
+enable sysroot-boot.mount
