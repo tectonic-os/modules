@@ -30,7 +30,15 @@ RUN rm -rf /var/cache/* /var/log/*
 # answers `Device or resource busy` and the image keeps the base's copy
 # regardless. A `COPY` writes no container and so sees no mount.
 #
-# The heredoc leaves one newline, which is what systemd wants: it skips empty
-# and commented lines, finds no hostname, and falls back to `DEFAULT_HOSTNAME`.
-COPY <<EOF /etc/hostname
-EOF
+# The file beside this one holds a single newline, which is what systemd wants:
+# it skips empty and commented lines, finds no hostname, and falls back to
+# `DEFAULT_HOSTNAME`.
+#
+# `@MODULE@` and not a heredoc, since tect 0.6.26. A heredoc here was parsed by
+# whichever buildah the runner image happened to carry: measured 2026-09-04,
+# GitHub image `20260819.586` attached it and `20260828.587` did not, so the
+# `EOF` became an instruction of its own and the build died on `copier: stat:
+# "/<<EOF"` — on Ubuntu that day and on Debian whenever it drew the newer
+# image. Nothing about the file needed a heredoc; it needed a path this
+# fragment could name.
+COPY --from=ctx @MODULE@/hostname /etc/hostname
