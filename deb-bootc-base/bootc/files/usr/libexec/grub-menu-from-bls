@@ -1,5 +1,5 @@
 #!/bin/sh
-# Renders /boot/loader/entries into a GRUB menu, because no deb GRUB can read
+# Renders the BLS entries into a GRUB menu, because no deb GRUB can read
 # them itself: `blscfg` is Fedora's command and `blsuki.mod` ships as a module
 # the signed image does not carry and cannot load, since Secure Boot prohibits
 # loading any module at all.
@@ -12,7 +12,7 @@
 # POSIX shell and `sort`, deliberately: the deb families' default awk is mawk,
 # which has neither ENDFILE nor the escapes a menu needs quoting with.
 # Takes an optional root: the units pass none and render this machine's own
-# /boot, and an installer passes the target it still has mounted, because
+# physical boot, and an installer passes the target it still has mounted, because
 # nothing renders the menu during an install — bootupd runs before the entries
 # are written. The paths *inside* the menu are the BLS entry's own and are
 # absolute against the filesystem GRUB reads, so a prefix here never reaches
@@ -20,9 +20,26 @@
 set -eu
 
 root="${1:-}"
-entries="${root}/boot/loader/entries"
-staged="${root}/boot/loader/entries.staged"
-grubdir="${root}/boot/grub2"
+
+# **The physical boot directory, which is `/sysroot/boot` and not `/boot`.**
+# That is where bootc reads and writes its entries — `physical_root.open_dir(
+# "boot")`, `store/mod.rs:392` — and it is the one mount `sysroot-boot-rw.service`
+# leaves writable. `/boot` is the deployment's read-only *view* of the same
+# filesystem, mounted `ro` by bootc's own `systemd.mount-extra=…:/boot:auto:ro`
+# karg; writing the menu through it is what used to need a remount here, and
+# the remount is what made this script depend on superblock-versus-per-mount
+# flag semantics. Writing where bootc writes deletes the whole question.
+#
+# Measured 2026-09-05 on the D4 machine, which is what settles it:
+# `mount -o remount,rw /boot` left `bootc upgrade` failing identically, and only
+# `mount -o remount,rw /sysroot/boot` let it through.
+#
+# An installer passes its target root and has it mounted writable already, so
+# `${root}/boot` is right there and `/sysroot` means nothing.
+boot="${root:-/sysroot}/boot"
+entries="${boot}/loader/entries"
+staged="${boot}/loader/entries.staged"
+grubdir="${boot}/grub2"
 out="${grubdir}/custom.cfg"
 
 # **`bootc upgrade` never writes to `loader/entries`.** It writes the next
@@ -58,41 +75,6 @@ fi
 
 [ -d "$entries" ] || exit 0
 [ -d "$grubdir" ] || exit 0
-
-# `/boot` is mounted read-only on an installed machine: bootc's own installer
-# writes `systemd.mount-extra=UUID=…:/boot:auto:ro` onto the kernel command
-# line, and `systemd-fstab-generator` turns that into `boot.mount` with
-# `Options=ro`. Measured 2026-09-04 — without this the service failed on every
-# boot with `cannot create /boot/grub2/custom.cfg.new: Read-only file system`,
-# and the menu stood only because the installer had rendered it once.
-#
-# This is bootc's own pattern, not an invention: `utils.rs::open_dir_remount_rw`
-# guards on `is_mountpoint` and then runs `mount -o remount,rw`, and
-# `install.rs` calls it on `/boot`. The guard is the part that matters. A disk
-# written by `bootc install to-disk` keeps /boot *inside* the root filesystem,
-# where it is not a mountpoint at all — remounting there would remount the
-# **root filesystem** read-write, which is emphatically not what this wants.
-#
-# Only for this machine's own /boot. An installer passes a root and has the
-# target mounted writable already, so it neither needs this nor should reach
-# for the host's mount table.
-#
-# Put back afterwards, on success or failure, and only if this changed it —
-# bootc leaves /boot writable after its own remount, and a menu renderer is not
-# the thing that should quietly make that permanent on every boot.
-#
-# **`bind` on both, and it is load-bearing rather than tidiness.** Since
-# `sysroot-boot-rw.service` there are *two* mounts of this one filesystem —
-# `/boot` read-only and `/sysroot/boot` writable — and a plain
-# `mount -o remount,ro /boot` changes the **superblock**, which would take
-# `/sysroot/boot` read-only with it and break the next `bootc upgrade`.
-# `remount,bind,` sets the flag on this mount alone and never touches the
-# superblock, which that service has already left writable.
-if [ -z "$root" ] && mountpoint -q /boot \
-	&& findmnt -no OPTIONS /boot | grep -q '^ro\(,\|$\)'; then
-	mount -o remount,bind,rw /boot
-	trap 'mount -o remount,bind,ro /boot 2>/dev/null || :' EXIT INT TERM
-fi
 
 fields() {
 	for conf in "$entries"/*.conf; do

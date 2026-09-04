@@ -2,14 +2,13 @@
 Description=Render the GRUB menu from the BLS entries
 ConditionPathIsDirectory=/boot/loader/entries
 
-# Ordered after the remount, and it is correctness rather than tidiness. The
-# renderer's own remount is `remount,bind,rw /boot`, a *per-mount* flag, which
-# the kernel refuses over a read-only superblock — so on this layout it works
-# only once `sysroot-boot-rw.service` has left the superblock writable. Without
-# this line the two race at startup, `set -eu` aborts the script, and the unit
-# is back to failing on every boot. `After=` alone: that service is skipped by
-# its own condition on a `bootc install to-disk` layout, where the block this
-# orders against is skipped too.
+# The renderer writes to `/sysroot/boot/grub2/custom.cfg`, where bootc keeps the
+# entries, and that mount is read-only until `sysroot-boot-rw.service` has made
+# it writable — so this is an ordering the render needs, not a courtesy. It is
+# also the *only* thing the script depends on now that it no longer remounts
+# anything itself. `After=` alone: on a `bootc install to-disk` layout that
+# service is skipped by its own condition, and there is nothing to wait for
+# because the physical boot is already writable there.
 After=sysroot-boot-rw.service
 
 [Service]
