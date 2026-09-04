@@ -2,6 +2,16 @@
 Description=Render the GRUB menu from the BLS entries
 ConditionPathIsDirectory=/boot/loader/entries
 
+# Ordered after the remount, and it is correctness rather than tidiness. The
+# renderer's own remount is `remount,bind,rw /boot`, a *per-mount* flag, which
+# the kernel refuses over a read-only superblock — so on this layout it works
+# only once `sysroot-boot-rw.service` has left the superblock writable. Without
+# this line the two race at startup, `set -eu` aborts the script, and the unit
+# is back to failing on every boot. `After=` alone: that service is skipped by
+# its own condition on a `bootc install to-disk` layout, where the block this
+# orders against is skipped too.
+After=sysroot-boot-rw.service
+
 [Service]
 Type=oneshot
 ExecStart=/usr/libexec/grub-menu-from-bls
