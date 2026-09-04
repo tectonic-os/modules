@@ -29,3 +29,12 @@ enable grub-menu-from-bls.path
 # whether it runs, so enabling it on a layout that does not need it is a no-op
 # rather than a wrong mount — which is why this is unconditional here.
 enable sysroot-boot.mount
+
+# Debian enables `systemd-resolved` from the package postinst and enables
+# nothing that configures a link, so without this line an installed machine has
+# no address and `bootc upgrade` cannot reach a registry — measured 2026-09-04,
+# `failure in name resolution` on a machine installed from media, with `ip` not
+# installed to diagnose it. The image carries no NetworkManager and
+# `systemd-networkd` is already present as part of systemd, so this line plus
+# `89-ethernet.network` is the whole of the fix.
+enable systemd-networkd.service

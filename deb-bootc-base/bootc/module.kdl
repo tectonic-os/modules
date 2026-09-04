@@ -90,6 +90,14 @@ asset "bootupd-vendor" {
 // how anyone reaches a machine installed from this base at all, `sudo` is how
 // they become root on it, and `less` is what `journalctl` pages through.
 //
+// `iproute2` is not a convenience. Neither deb base ships it, so `ip` did not
+// exist on any machine installed from here — which is how a machine with no
+// address at all went unnoticed until `bootc upgrade` answered `failure in
+// name resolution` on 2026-09-04 and there was nothing to diagnose it with.
+// The fix for the address itself is `89-ethernet.network` and the
+// `systemd-networkd` line in this module's preset; this is what makes the next
+// one visible.
+//
 // The schema takes one family per line, so the two lists are repeated rather
 // than shared, and they differ in exactly two entries. Ubuntu resolves every
 // other name unchanged; it packages no `linux-image-amd64` and no
@@ -104,6 +112,7 @@ packages {
            "systemd-boot" "systemd-boot-efi" \
            "shim-signed" "grub-efi-amd64-signed" "grub-common" \
            "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
+           "iproute2" \
            "skopeo" "ca-certificates" "zstd" "curl" \
            "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
            "efibootmgr" "cryptsetup-bin" "dmsetup" \
@@ -113,6 +122,7 @@ packages {
            "systemd-boot" "systemd-boot-efi" \
            "shim-signed" "grub-efi-amd64-signed" "grub-common" \
            "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
+           "iproute2" \
            "skopeo" "ca-certificates" "zstd" "curl" \
            "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
            "efibootmgr" "cryptsetup-bin" "dmsetup" \

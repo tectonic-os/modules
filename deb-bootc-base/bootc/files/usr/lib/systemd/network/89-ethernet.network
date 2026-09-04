@@ -1,0 +1,24 @@
+# systemd's own `89-ethernet.network.example`, activated verbatim — the match
+# rules are upstream's rather than ours, which is the point: `Kind=!*` is what
+# keeps this off virtual devices, so podman's bridges and veths never take a
+# lease from the machine's network.
+#
+# Without it an installed machine has no address at all. Debian enables
+# `systemd-resolved` from its own postinst and enables *nothing* that
+# configures a link — `systemd-networkd` ships disabled — so this image
+# resolved names through a stub with no upstream server, from a machine with no
+# route. Measured 2026-09-04 on a machine installed from media: `bootc upgrade`
+# answered `failure in name resolution`, and `ip` was not even installed to see
+# it with.
+#
+# The base's hardcoded `nameserver 1.1.1.1` is not the fallback it looks like.
+# `nsswitch.conf` reads `hosts: files myhostname resolve [!UNAVAIL=return] dns`,
+# so once resolved is up nss-resolve answers and `[!UNAVAIL=return]` stops the
+# lookup before it ever reaches `dns` — the static file is unreachable by
+# design, not a safety net.
+[Match]
+Kind=!*
+Type=ether
+
+[Network]
+DHCP=yes
