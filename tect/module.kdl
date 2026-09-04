@@ -8,8 +8,8 @@ provides-file "/usr/share/tectonic/assets"
 asset "tect" {
     pin {
         renovate datasource="github-releases" depName="tectonic-os/tectonic"
-        version "0.6.23"
+        version "0.6.24"
         url "https://github.com/tectonic-os/tectonic/releases/download/v{version}/tect-v{version}-x86_64-linux-musl.tar.gz"
-        sha256 "49b8f4b6b7a26838966daafb074ac87a6bc538edc0e0d03329a77f5f62796d0a" from="sidecar"
+        sha256 "76bc0c37d8d3c639e319969c633c242bb3edcdf2d5459543993765b2b0ac4e80" from="sidecar"
     }
 }
