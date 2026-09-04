@@ -310,6 +310,13 @@ jobs:
                 "$TECT_BIN" create key secureboot --root "$ROOT" --no-tui \
                   --cn "Collection CI"
                 ;;
+              # Declared by the module rather than by this workflow: an ssh
+              # key with no public half is a refusal at `generate`, which is
+              # what a repository holding it would hit too. The private half
+              # stays on the runner and dies with it.
+              login-access)
+                "$TECT_BIN" create key ssh --root "$ROOT" --no-tui
+                ;;
               signature-policy)
                 mkdir -p "$ROOT/keys/public/etc/pki/containers"
                 openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \
