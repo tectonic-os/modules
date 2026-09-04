@@ -1,0 +1,39 @@
+description "podman and an OCI runtime, which bootc shells out to for the image store every upgrade opens"
+
+supports "debian" "ubuntu"
+
+provides "container-runtime"
+
+requires "build-environment"
+
+// Measured 2026-09-04 on a machine installed by `tect install`: `bootc upgrade`
+// died on `Upgrading composefs: Creating imgstorage: Initializing images: No
+// such file or directory (os error 2)`, and the error is `execve` failing, not
+// a missing directory. bootc keeps its composefs image store at
+// `composefs/bootc/storage` and initialises a fresh one by *running* `podman
+// images` in it — `podstorage.rs::CStorage::create` calls
+// `Command::new(bootc_utils::podman_bin())`, and `podman_bin()` is the literal
+// string `"podman"` unless `BOOTC_EXP_EXTERNAL_CONTAINER_TOOL` names something
+// else. The base shipped skopeo and no podman, so there was nothing to exec.
+//
+// **So a deb bootc host needs podman on the installed machine, not just in the
+// builder.** `quay.io/fedora/fedora-bootc:44` carries `podman-5.8.4` and
+// `crun`, which is what made this a gap in this base rather than a bootc bug:
+// the reference base has always had them and nothing here had ever run an
+// upgrade to notice. That is also why it is a module rather than two more names
+// on `bootc`'s package list — the dependency is real, it is bootc's, and
+// `requires "container-runtime"` is how a repository is told so before it
+// builds instead of a month later when an upgrade fails.
+//
+// `crun` and not `runc`: it is what Fedora's base uses, it is what podman
+// defaults to on both families, and it is the smaller of the two. `crun-wasm`
+// rides along in the same package and is not asked for.
+provides-file "/usr/bin/podman"
+provides-file "/usr/bin/crun"
+
+// Measured on both bases the same day: `podman` 5.8.6 with `crun` 1.28 on
+// `debian:forky`, `podman` 5.7.0 with `crun` 1.21 on `ubuntu:26.04`.
+packages {
+    debian "podman" "crun"
+    ubuntu "podman" "crun"
+}
