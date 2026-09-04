@@ -26,6 +26,33 @@ out="${grubdir}/custom.cfg"
 [ -d "$entries" ] || exit 0
 [ -d "$grubdir" ] || exit 0
 
+# `/boot` is mounted read-only on an installed machine: bootc's own installer
+# writes `systemd.mount-extra=UUID=…:/boot:auto:ro` onto the kernel command
+# line, and `systemd-fstab-generator` turns that into `boot.mount` with
+# `Options=ro`. Measured 2026-09-04 — without this the service failed on every
+# boot with `cannot create /boot/grub2/custom.cfg.new: Read-only file system`,
+# and the menu stood only because the installer had rendered it once.
+#
+# This is bootc's own pattern, not an invention: `utils.rs::open_dir_remount_rw`
+# guards on `is_mountpoint` and then runs `mount -o remount,rw`, and
+# `install.rs` calls it on `/boot`. The guard is the part that matters. A disk
+# written by `bootc install to-disk` keeps /boot *inside* the root filesystem,
+# where it is not a mountpoint at all — remounting there would remount the
+# **root filesystem** read-write, which is emphatically not what this wants.
+#
+# Only for this machine's own /boot. An installer passes a root and has the
+# target mounted writable already, so it neither needs this nor should reach
+# for the host's mount table.
+#
+# Put back afterwards, on success or failure, and only if this changed it —
+# bootc leaves /boot writable after its own remount, and a menu renderer is not
+# the thing that should quietly make that permanent on every boot.
+if [ -z "$root" ] && mountpoint -q /boot \
+	&& findmnt -no OPTIONS /boot | grep -q '^ro\(,\|$\)'; then
+	mount -o remount,rw /boot
+	trap 'mount -o remount,ro /boot 2>/dev/null || :' EXIT INT TERM
+fi
+
 fields() {
 	for conf in "$entries"/*.conf; do
 		[ -f "$conf" ] || continue
