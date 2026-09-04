@@ -133,6 +133,15 @@ jobs:
           # created with the mount program and keeps the naive diff until it is
           # thrown away. Nothing has pulled yet, so this costs nothing.
           sudo podman system reset --force > /dev/null 2>&1 || true
+          # And the reset is not enough on a runner whose store was made before
+          # that file existed: its database records an empty graph driver, the
+          # reset fails on the inconsistency, `|| true` swallows it, and the
+          # next command refuses with `database graph driver "" does not match
+          # our graph driver "overlay"`. Measured on four of six legs in one
+          # run, moving between legs run to run. Nothing has pulled yet, so
+          # removing the store outright costs nothing and leaves no database to
+          # disagree with the config.
+          sudo rm -rf /var/lib/containers/storage /run/containers/storage
           sudo podman info --format 'storage: {{.Store.GraphDriverName}} {{.Store.GraphOptions}}'
 
       - name: Install the released tool
