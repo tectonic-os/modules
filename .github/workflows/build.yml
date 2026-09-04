@@ -390,6 +390,15 @@ jobs:
           # Root, because the scan below is `sudo podman run` against the root
           # store: buildah builds straight into it, so there is no archive to
           # export and load.
+          # The Containerfile the build is about to run, in a fold. A build
+          # that fails inside buildah reports the step it died on and never
+          # the file, and a step that reads correctly can still have been
+          # parsed wrong — `COPY <<EOF /etc/hostname` failed on the ubuntu leg
+          # and passed on the debian one with the same text, which is a
+          # difference no log so far can show.
+          echo "::group::${IMAGE} Containerfile"
+          cat "${ROOT}/generated/${IMAGE}/Containerfile"
+          echo "::endgroup::"
           cd "$ROOT" && sudo IMAGE_REGISTRY="$IMAGE_REGISTRY" \
             "$TECT_BIN" build --no-tui
 
