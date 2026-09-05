@@ -39,10 +39,58 @@ on:
 #               generated but never built. A diff is not importable on its own:
 #               a module whose requirement nothing in the image provides is an
 #               unmet-requires error, so the closure is walked from the
-#               providers rather than filtered from the diff.
+#               providers rather than filtered from the diff. One per family,
+#               because a widened module's `requires`, `after` and
+#               `requires-file` can be satisfiable on one family and dangling
+#               on another, and building nothing makes three of them cheap.
+#   packages    every `packages` batch a family declares, resolved by apt in a
+#               container of that family and nothing else. It builds no image,
+#               so it costs seconds, and it fails on the one defect a widened
+#               module can introduce that `tect check` cannot see: a package
+#               name that does not exist, or a set apt cannot satisfy.
 jobs:
-  collection:
-    name: ${{ matrix.image }} ${{ matrix.family }}
+  # The two deb `collection` legs carry the largest module set and are the
+  # queue's bottleneck, which is why `NEXT-42` parked the Debian one. They are
+  # not dropped, they are moved off the pull request: a push to `main` and the
+  # weekly schedule run them, and a pull request gets `packages` instead, which
+  # resolves every declared name on both families in seconds. So the defect a
+  # module edit can actually introduce is caught before merge, and the full
+  # build still gates `main`.
+  legs:
+    name: Choose the legs for this event
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      include: ${{ steps.pick.outputs.include }}
+    steps:
+      - id: pick
+        run: |
+          set -euo pipefail
+          always='[
+            {"image":"collection","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
+            {"image":"bootc-base","family":"debian","base":"docker.io/library/debian:forky"},
+            {"image":"bootc-base","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"},
+            {"image":"hardening","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
+            {"image":"changed","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
+            {"image":"changed","family":"debian","base":"docker.io/library/debian:forky"},
+            {"image":"changed","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"}
+          ]'
+          deb='[
+            {"image":"collection","family":"debian","base":"docker.io/library/debian:forky"},
+            {"image":"collection","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"}
+          ]'
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            printf 'include=%s\n' "$(jq -c . <<< "$always")" >> "$GITHUB_OUTPUT"
+          else
+            printf 'include=%s\n' "$(jq -c -s add <<< "${always}${deb}")" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Deliberately not an `image` in the matrix below: it shares none of that
+  # job's steps — no tool, no scaffold, no import, no build — so threading it
+  # through them would mean a condition on every one of them.
+  packages:
+    name: package lists ${{ matrix.family }}
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -50,27 +98,54 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - image: collection
-            family: fedora
-            base: quay.io/fedora/fedora-bootc:44
-          # Off for NEXT-42 stage 5: this leg carries the largest module set and
-          # is the queue's bottleneck while proving-ground publishes and upgrades
-          # a deb image. Put it back when that stage is archived.
-          # - image: collection
-          #   family: debian
-          #   base: docker.io/library/debian:forky
-          - image: bootc-base
-            family: debian
+          - family: debian
             base: docker.io/library/debian:forky
-          - image: bootc-base
-            family: ubuntu
+          - family: ubuntu
             base: docker.io/library/ubuntu:26.04
-          - image: hardening
-            family: fedora
-            base: quay.io/fedora/fedora-bootc:44
-          - image: changed
-            family: fedora
-            base: quay.io/fedora/fedora-bootc:44
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      # One `apt-get update` and then one `--dry-run` per module, rather than
+      # one over the union: a union says only that something in the collection
+      # does not resolve, and the point of the job is to name the module that
+      # wrote the line. `--dry-run` resolves dependencies as well as names, so
+      # a set apt cannot satisfy fails here too.
+      - name: Resolve every package this family declares
+        env:
+          FAMILY: ${{ matrix.family }}
+          BASE: ${{ matrix.base }}
+        run: |
+          set -euo pipefail
+          python3 .github/packages.py "$FAMILY" > lists.txt
+          echo "::notice::$(wc -l < lists.txt) modules declare packages for ${FAMILY}"
+          sudo podman run --rm -i -v "${PWD}/lists.txt:/lists.txt:ro" "$BASE" \
+            bash -euc '
+              export DEBIAN_FRONTEND=noninteractive
+              apt-get update -qq
+              rc=0
+              while read -r module packages; do
+                if apt-get install --dry-run -qq $packages > /dev/null 2>&1; then
+                  printf "ok   %s\n" "$module"
+                else
+                  printf "FAIL %s\n" "$module"
+                  apt-get install --dry-run $packages 2>&1 | grep -E "^E:" | head -3
+                  rc=1
+                fi
+              done < /lists.txt
+              exit $rc
+            '
+
+  collection:
+    name: ${{ matrix.image }} ${{ matrix.family }}
+    needs: legs
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.legs.outputs.include) }}
     env:
       IMAGE_REGISTRY: ghcr.io/${{ github.repository_owner }}
       IMAGE: ${{ matrix.image }}
