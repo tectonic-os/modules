@@ -151,8 +151,9 @@ jobs:
       IMAGE: ${{ matrix.image }}
       FAMILY: ${{ matrix.family }}
       # goojust pins an asset on a repository that does not resolve yet, and
-      # just/power-scripts requires it. Both return when that repository lands.
-      SKIP: just/goojust just/power-scripts
+      # system-menu/power-scripts requires it. Both return when that repository
+      # lands.
+      SKIP: system-menu/goojust system-menu/power-scripts
       # The walk under `hardening/` finds every hardening mechanism.
       # `signature-policy` is added by name because it is not one: the
       # published hardening image needs the module declaring the cosign
@@ -494,7 +495,8 @@ jobs:
       # that Debian carried unnoticed for as long as it has existed, precisely
       # because nothing looked; a check only the newer family runs leaves the
       # older one free to regress. The man page count is the
-      # `dpkg.cfg.d/excludes` repair from `deb-family/apt`, asserted where it
+      # `dpkg.cfg.d/excludes` repair from `deb-family/build-environment`,
+      # asserted where it
       # lands rather than where it runs.
       - name: Lint the built base
         if: matrix.image == 'bootc-base'

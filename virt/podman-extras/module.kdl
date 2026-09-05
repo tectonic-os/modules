@@ -1,13 +1,20 @@
-description "Podman extras: compose, machine and the TUI"
+description "Podman extras: compose and the TUI, on top of the runtime every bootc image already has"
 
 supports "fedora" "debian" "ubuntu"
 
+// Extras only: the runtime itself is not this module's, on any family.
+// `quay.io/fedora/fedora-bootc:44` ships `podman` and `crun` in the base —
+// measured 2026-09-05 — and a deb base ships neither, which is what
+// `deb-family/container-runtime` is for. So this module is what goes on top of
+// a runtime that is always already there, and never the runtime.
+//
 // Neither `podman-machine` nor `podman-tui` exists on either deb family —
 // checked 2026-09-05 — so the deb legs are the compose front end and the
 // rootless networking backends.
 //
 // `passt` and `slirp4netns` are here for a reason `apt-cache depends podman`
-// gives: deb podman only *recommends* both, and `deb-family/apt` installs with
+// gives: deb podman only *recommends* both, and `deb-family/build-environment`
+// installs with
 // `--no-install-recommends`, so neither arrives on its own. Without one of
 // them a rootless container has no network at all.
 packages {

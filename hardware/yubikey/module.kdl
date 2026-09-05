@@ -11,7 +11,7 @@ requires "build-environment"
 // so nothing here overrides an upstream one.
 //
 // Ubuntu was held back for two reasons and both are discharged. The
-// `path-exclude` answer is `deb-family/apt`, which deletes
+// `path-exclude` answer is `deb-family/build-environment`, which deletes
 // `/etc/dpkg/dpkg.cfg.d/excludes` and reinstalls every package against it
 // before any module installs anything — measured 2026-09-03, `man1` 0 -> 459
 // pages. And the leg exists now. The whole Debian set resolves on

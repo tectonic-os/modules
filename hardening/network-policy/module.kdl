@@ -2,7 +2,7 @@ description "Network policy: LLMNR off, and resolv.conf pointed at the systemd-r
 
 supports "fedora" "debian" "ubuntu"
 
-// The `resolv.conf` link this ships is the same `L+` line `deb-family/bootc`
+// The `resolv.conf` link this ships is the same `L+` line `deb-family/bootc-base`
 // already writes at `00-resolv-conf.conf`, for the same reason and to the same
 // target. Two tmpfiles rules naming one path is not a collision — different
 // filenames, identical content, the second a no-op — and neither module can

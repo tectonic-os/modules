@@ -1,4 +1,4 @@
-description "Development tooling: git, direnv, git-delta and friends"
+description "Git and its companions: git-delta, git-lfs, and the direnv that rides along"
 
 supports "fedora" "debian" "ubuntu"
 
