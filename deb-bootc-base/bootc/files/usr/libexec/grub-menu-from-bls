@@ -37,6 +37,20 @@ root="${1:-}"
 # An installer passes its target root and has it mounted writable already, so
 # `${root}/boot` is right there and `/sysroot` means nothing.
 boot="${root:-/sysroot}/boot"
+
+# The one arrangement in which everything below silently does nothing. On the
+# separate-/boot layout `sysroot-boot.mount` binds the partition at
+# /sysroot/boot; if it did not run, bootc writes its entries into an empty
+# directory on the physical root, GRUB reads a boot partition nothing has
+# touched, and this script exits 0 on the missing `grub2` — three components
+# agreeing to do nothing and no message anywhere. Refuse instead, because a
+# machine whose menu is never rewritten is the defect this whole file exists
+# for. It should never fire: the service is ordered after the mount.
+if [ -z "$root" ] && mountpoint -q /boot && ! mountpoint -q /sysroot/boot; then
+	echo "grub-menu-from-bls: /boot is its own partition but /sysroot/boot is not bound to it, so bootc and this script disagree about where the entries are; sysroot-boot.mount did not run" >&2
+	exit 1
+fi
+
 entries="${boot}/loader/entries"
 staged="${boot}/loader/entries.staged"
 grubdir="${boot}/grub2"
@@ -64,13 +78,25 @@ out="${grubdir}/custom.cfg"
 # A cancelled upgrade needs nothing special. `update.rs:82` removes the staged
 # directory, the `.path` unit sees that removal like any other change, and this
 # falls back to `entries` on the next render.
+#
+# **An empty staged directory is left alone rather than fallen back on.** bootc
+# creates it and then writes both `.conf` files microseconds later, so the watch
+# fires once on the bare directory: falling back to `entries` there renders the
+# *old* menu, and only the next render — milliseconds away — corrects it.
+# Measured 2026-09-05, four times in five. Nothing observed it, but the file
+# being rewritten is the boot menu, and exiting is free. The fallback still
+# applies where the staged directory does not exist at all, which is the
+# cancelled-upgrade case.
 if [ -d "$staged" ]; then
+	staged_holds_entry=
 	for conf in "$staged"/*.conf; do
 		if [ -f "$conf" ]; then
-			entries="$staged"
+			staged_holds_entry=yes
 		fi
 		break
 	done
+	[ -n "$staged_holds_entry" ] || exit 0
+	entries="$staged"
 fi
 
 [ -d "$entries" ] || exit 0
