@@ -1,10 +1,24 @@
 description "libvirt, QEMU/KVM and virt-manager, with the group and relabel workarounds they need"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
+// The deb split is different rather than renamed: Fedora's `libvirt` metapackage
+// is `libvirt-daemon-system` plus `libvirt-clients`, `qemu` is
+// `qemu-system-x86` plus `qemu-utils`, and `libvirt-nss` is `libnss-libvirt`.
+// `edk2-ovmf` is `ovmf`. All resolved 2026-09-05 on both deb bases.
+//
+// `qemu-user-static-aarch64` has no deb counterpart: both families ship one
+// `qemu-user-binfmt` covering every emulated architecture, so the two Fedora
+// entries collapse to one.
 packages {
     fedora "edk2-ovmf" "libvirt" "libvirt-nss" "qemu" "qemu-img" \
             "qemu-system-x86-core" "qemu-user-binfmt" "qemu-user-static-aarch64" \
+            "virt-manager" "virt-v2v" "virt-viewer"
+    debian "ovmf" "libvirt-daemon-system" "libvirt-clients" "libnss-libvirt" \
+            "qemu-system-x86" "qemu-utils" "qemu-user-binfmt" \
+            "virt-manager" "virt-v2v" "virt-viewer"
+    ubuntu "ovmf" "libvirt-daemon-system" "libvirt-clients" "libnss-libvirt" \
+            "qemu-system-x86" "qemu-utils" "qemu-user-binfmt" \
             "virt-manager" "virt-v2v" "virt-viewer"
 }
 

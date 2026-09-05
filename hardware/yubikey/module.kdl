@@ -1,6 +1,6 @@
 description "Hardware token and smartcard auth: YubiKey, FIDO2, PAM and PC/SC"
 
-supports "fedora" "debian"
+supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
 
@@ -10,9 +10,14 @@ requires "build-environment"
 // Debian's own `apparmor-profiles` ships none for pcscd — checked 2026-09-01 —
 // so nothing here overrides an upstream one.
 //
-// `supports "ubuntu"` is deliberately absent: no leg builds it, and the family
-// owes a `path-exclude` answer first.
+// Ubuntu was held back for two reasons and both are discharged. The
+// `path-exclude` answer is `deb-family/apt`, which deletes
+// `/etc/dpkg/dpkg.cfg.d/excludes` and reinstalls every package against it
+// before any module installs anything — measured 2026-09-03, `man1` 0 -> 459
+// pages. And the leg exists now. The whole Debian set resolves on
+// `ubuntu:26.04` unchanged, checked 2026-09-05.
 packages {
     fedora "opensc" "pam-u2f" "pam_yubico" "pamu2fcfg" "pcsc-lite" "pcsc-lite-ccid" "yubikey-manager"
     debian "opensc" "libpam-u2f" "libpam-yubico" "pamu2fcfg" "pcscd" "libccid" "yubikey-manager"
+    ubuntu "opensc" "libpam-u2f" "libpam-yubico" "pamu2fcfg" "pcscd" "libccid" "yubikey-manager"
 }

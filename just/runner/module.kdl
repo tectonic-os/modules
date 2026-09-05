@@ -1,6 +1,6 @@
 description "The just command runner and the system justfile every module's recipes are collected into"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 provides "just"
 
@@ -8,4 +8,6 @@ collects "justfile.inc" into="/usr/share/just/justfile.apps" priority=500
 
 packages {
     fedora "just"
+    debian "just"
+    ubuntu "just"
 }

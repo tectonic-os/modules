@@ -1,8 +1,16 @@
 description "Network tooling: avahi, wireguard-tools, tcpdump, traceroute and friends"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
+// Three renames, resolved 2026-09-05: `avahi-utils` is `avahi-tools`,
+// `gir1.2-avahi-0.6` is the GObject introspection data `avahi-gobject`
+// carries, and `netcat-openbsd` is what provides `nc` on both deb families
+// (`ncat` also resolves, and is not the default `nc` there).
 packages {
     fedora "avahi-gobject" "avahi-tools" "cifs-utils" "nmap-ncat" "tcpdump" \
             "traceroute" "wireguard-tools"
+    debian "gir1.2-avahi-0.6" "avahi-utils" "cifs-utils" "netcat-openbsd" \
+            "tcpdump" "traceroute" "wireguard-tools"
+    ubuntu "gir1.2-avahi-0.6" "avahi-utils" "cifs-utils" "netcat-openbsd" \
+            "tcpdump" "traceroute" "wireguard-tools"
 }

@@ -1,9 +1,20 @@
 description "Traditional CLI utilities: tmux, htop, rsync, vim and friends"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
+// The deb lists differ from the Fedora one in four names and nothing else,
+// each resolved against `debian:forky` and `ubuntu:26.04` on 2026-09-05:
+// `7zip` is the package both archives ship (`p7zip-full` is gone from each),
+// `libarchive-tools` is what carries `bsdunzip`, `vim` is the unsplit build,
+// and `mtr` rather than `mtr-tiny` because the Fedora entry is the full one.
 packages {
     fedora "7zip-standalone" "bash-completion" "bc" "bsdunzip" "btop" "htop" \
             "iw" "mtr" "pv" "rsync" "tmux" "tree" "vim-enhanced" "whois" \
+            "wl-clipboard" "zip"
+    debian "7zip" "bash-completion" "bc" "libarchive-tools" "btop" "htop" \
+            "iw" "mtr" "pv" "rsync" "tmux" "tree" "vim" "whois" \
+            "wl-clipboard" "zip"
+    ubuntu "7zip" "bash-completion" "bc" "libarchive-tools" "btop" "htop" \
+            "iw" "mtr" "pv" "rsync" "tmux" "tree" "vim" "whois" \
             "wl-clipboard" "zip"
 }

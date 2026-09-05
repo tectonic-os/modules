@@ -1,7 +1,15 @@
 description "Development tooling: git, direnv, git-delta and friends"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
+// `git-credential-libsecret` has no deb binary on either family. Checked
+// 2026-09-05: `dpkg -L git` on `debian:forky` ships only the C source under
+// `/usr/share/doc/git/contrib/credential/libsecret`, and no other package
+// builds it. So the name is dropped rather than translated, and a deb image
+// gets `git-credential-cache` and `git-credential-store`, which `git` does
+// ship.
 packages {
     fedora "direnv" "git" "git-credential-libsecret" "git-delta" "git-lfs"
+    debian "direnv" "git" "git-delta" "git-lfs"
+    ubuntu "direnv" "git" "git-delta" "git-lfs"
 }

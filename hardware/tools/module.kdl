@@ -1,7 +1,12 @@
 description "Hardware diagnostics and tuning: lm_sensors, dmidecode, intel-lpmd, alsa-ucm"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
+// Two renames and nothing else, resolved 2026-09-05: `lm-sensors` with a dash
+// rather than an underscore, and `alsa-ucm-conf` for the use-case manager
+// configuration Fedora calls `alsa-ucm`.
 packages {
     fedora "alsa-ucm" "alsa-utils" "dmidecode" "intel-lpmd" "lm_sensors" "lshw" "pciutils" "powerstat"
+    debian "alsa-ucm-conf" "alsa-utils" "dmidecode" "intel-lpmd" "lm-sensors" "lshw" "pciutils" "powerstat"
+    ubuntu "alsa-ucm-conf" "alsa-utils" "dmidecode" "intel-lpmd" "lm-sensors" "lshw" "pciutils" "powerstat"
 }

@@ -1,6 +1,12 @@
 #!/usr/bin/bash
 set -euo pipefail
 
-for user in $(getent group wheel | cut -d: -f4 | tr ',' ' '); do
-    usermod -aG libvirt "$user"
+# `wheel` on Fedora, `sudo` on both deb families — the group that means
+# "this account administers the machine" is not the same name across families,
+# and a service that only knew one of them would silently add nobody on the
+# other. Both are looked up; a group that does not exist contributes nothing.
+for group in wheel sudo; do
+    for user in $(getent group "$group" | cut -d: -f4 | tr ',' ' '); do
+        usermod -aG libvirt "$user"
+    done
 done
