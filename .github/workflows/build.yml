@@ -271,6 +271,11 @@ jobs:
               } | sort -u \
                 | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
+            # `xargs` without `-r`, so the closure runs on an empty set too:
+            # a commit touching no module still scaffolds an image, and what
+            # the base seeds into it has requirements of its own. With `-r` the
+            # closure never ran and the leg scaffolded a `bootc-base` with
+            # nothing providing `container-runtime` — measured 2026-09-05.
             changed)
               from="${FROM:-$(git rev-parse -q --verify HEAD^ || true)}"
               : > "$NAMES"
@@ -285,7 +290,7 @@ jobs:
                     dir="$(dirname "$dir")"
                   done
                 done | sort -u \
-                  | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+                  | xargs python3 .github/closure.py "$FAMILY" > "$NAMES"
               fi
               ;;
           esac
