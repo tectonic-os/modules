@@ -13,6 +13,15 @@ a MAC policy, `rechunking` and `initramfs-generation` and `tect` is the one that
 knows which. Requirements come out before the module that needs them.
 """
 
+# What the base row itself requires, which `create image` seeds into every image
+# on it. Nothing in `wanted` need mention the seeded module, and it has
+# requirements of its own -- `deb-family/bootc-base` requires
+# `container-runtime` -- so the seed is closed over here rather than left to a
+# leg that happens to name it. Measured 2026-09-05: a `changed` leg naming one
+# unrelated module scaffolded an image whose seeded `bootc-base` had nothing
+# providing `container-runtime`.
+SEEDED = {"debian": ("bootc-base",), "ubuntu": ("bootc-base",)}
+
 import re
 import sys
 from pathlib import Path
@@ -67,6 +76,10 @@ def main(argv):
                 visit(needed)
         order.append(name)
 
+    for capability in SEEDED.get(family, ()):
+        seeded = provider.get(capability)
+        if seeded:
+            visit(seeded)
     for name in wanted:
         if name in modules and family in modules[name][0]:
             visit(name)
