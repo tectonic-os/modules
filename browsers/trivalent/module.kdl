@@ -5,6 +5,4 @@ supports "fedora"
 requires "build-environment"
 requires "selinux-policy"
 
-packages {
-    fedora "trivalent" "trivalent-qt6-ui" "trivalent-selinux" enablerepo="secureblue"
-}
+packages "trivalent" "trivalent-qt6-ui" "trivalent-selinux" enablerepo="secureblue"

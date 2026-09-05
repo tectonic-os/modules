@@ -8,57 +8,31 @@ requires "build-environment"
 
 allow-verify "man-page-missing" unit="plasmalogin.service"
 
-packages {
-    fedora "plasma-desktop" "plasma-workspace" "plasma-workspace-wallpapers" \
-            "plasma-login-manager" "kcm-plasmalogin" "plasma-setup" \
-            "kwin" "kscreen" "kscreenlocker" \
-            "plasma-breeze" "breeze-icon-theme" "kde-gtk-config" \
-            "kde-settings-plasmalogin" "kde-settings-pulseaudio" \
-            "polkit-kde" "xdg-desktop-portal-kde" \
-            "plasma-nm" "plasma-pa" "plasma-systemmonitor" "bluedevil" \
-            "pam-kwallet" "kwalletmanager5" "plasma-print-manager" \
-            "plasma-browser-integration" "plasma-firewall" "plasma-firewall-firewalld" \
-            "dolphin" "konsole" "ark" "spectacle" \
-            "kate" "kate-plugins" "kate-krunner-plugin" "ksystemlog" "kamera" \
-            "gvfs" "gvfs-client" "gvfs-fuse" \
-            "firewalld" "accountsservice" "tuned" "tuned-ppd" "thermald" \
-            "switcheroo-control" "input-remapper" \
-            "udisks2" "upower" "xdg-user-dirs" "systemd-oomd-defaults" \
-            "pipewire" "pipewire-pulseaudio" "wireplumber" \
-            "NetworkManager-wifi" "NetworkManager-bluetooth" "wpa_supplicant" \
-            "bluez" "pinentry-qt"
-    debian "plasma-desktop" "plasma-workspace" "plasma-workspace-wallpapers" \
-            "systemsettings" "sddm" "sddm-theme-breeze" \
-            "kwin-wayland" "kwin-x11" "kscreen" "kde-cli-tools" \
-            "breeze" "breeze-icon-theme" "kde-config-gtk-style" \
-            "polkit-kde-agent-1" "xdg-desktop-portal-kde" \
-            "plasma-nm" "plasma-pa" "plasma-systemmonitor" "bluedevil" \
-            "libpam-kwallet5" "kwalletmanager" "print-manager" \
-            "plasma-browser-integration" "plasma-firewall" \
-            "dolphin" "konsole" "ark" "kde-spectacle" \
-            "kate" "ksystemlog" "kamera" \
-            "gvfs" "gvfs-daemons" "gvfs-fuse" \
-            "firewalld" "accountsservice" "tuned" "tuned-ppd" "thermald" \
-            "switcheroo-control" "input-remapper-daemon" "input-remapper-gtk" \
-            "udisks2" "upower" "xdg-user-dirs" \
-            "pipewire" "pipewire-pulse" "wireplumber" \
-            "network-manager" "wpasupplicant" "bluez" "pinentry-qt" \
-            "fonts-noto-core" "fonts-noto-color-emoji" "fonts-hack"
-    ubuntu "plasma-desktop" "plasma-workspace" "plasma-workspace-wallpapers" \
-            "systemsettings" "sddm" "sddm-theme-breeze" \
-            "kwin-wayland" "kwin-x11" "kscreen" "kde-cli-tools" \
-            "breeze" "breeze-icon-theme" "kde-config-gtk-style" \
-            "polkit-kde-agent-1" "xdg-desktop-portal-kde" \
-            "plasma-nm" "plasma-pa" "plasma-systemmonitor" "bluedevil" \
-            "libpam-kwallet5" "kwalletmanager" "print-manager" \
-            "plasma-browser-integration" "plasma-firewall" \
-            "dolphin" "konsole" "ark" "kde-spectacle" \
-            "kate" "ksystemlog" "kamera" \
-            "gvfs" "gvfs-daemons" "gvfs-fuse" \
-            "firewalld" "accountsservice" "tuned" "tuned-ppd" "thermald" \
-            "switcheroo-control" "input-remapper-daemon" "input-remapper-gtk" \
-            "udisks2" "upower" "xdg-user-dirs" \
-            "pipewire" "pipewire-pulse" "wireplumber" \
-            "network-manager" "wpasupplicant" "bluez" "pinentry-qt" \
-            "fonts-noto-core" "fonts-noto-color-emoji" "fonts-hack"
+packages "plasma-desktop" "plasma-workspace" "plasma-workspace-wallpapers" \
+    "kscreen" "breeze-icon-theme" "xdg-desktop-portal-kde" "plasma-nm" \
+    "plasma-pa" "plasma-systemmonitor" "bluedevil" \
+    "plasma-browser-integration" "plasma-firewall" "dolphin" "konsole" "ark" \
+    "kate" "ksystemlog" "kamera" "gvfs" "gvfs-fuse" "firewalld" \
+    "accountsservice" "tuned" "tuned-ppd" "thermald" "switcheroo-control" \
+    "udisks2" "upower" "xdg-user-dirs" "pipewire" "wireplumber" "bluez" \
+    "pinentry-qt"
+
+family "fedora" {
+    packages "plasma-login-manager" "kcm-plasmalogin" "plasma-setup" "kwin" \
+        "kscreenlocker" "plasma-breeze" "kde-gtk-config" \
+        "kde-settings-plasmalogin" "kde-settings-pulseaudio" "polkit-kde" \
+        "pam-kwallet" "kwalletmanager5" "plasma-print-manager" \
+        "plasma-firewall-firewalld" "spectacle" "kate-plugins" \
+        "kate-krunner-plugin" "gvfs-client" "input-remapper" \
+        "systemd-oomd-defaults" "pipewire-pulseaudio" "NetworkManager-wifi" \
+        "NetworkManager-bluetooth" "wpa_supplicant"
+}
+family "debian" "ubuntu" {
+    packages "systemsettings" "sddm" "sddm-theme-breeze" "kwin-wayland" \
+        "kwin-x11" "kde-cli-tools" "breeze" "kde-config-gtk-style" \
+        "polkit-kde-agent-1" "libpam-kwallet5" "kwalletmanager" \
+        "print-manager" "kde-spectacle" "gvfs-daemons" \
+        "input-remapper-daemon" "input-remapper-gtk" "pipewire-pulse" \
+        "network-manager" "wpasupplicant" "fonts-noto-core" \
+        "fonts-noto-color-emoji" "fonts-hack"
 }

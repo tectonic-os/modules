@@ -98,35 +98,22 @@ asset "bootupd-vendor" {
 // `systemd-networkd` line in this module's preset; this is what makes the next
 // one visible.
 //
-// The schema takes one family per line, so the two lists are repeated rather
-// than shared, and they differ in exactly two entries. Ubuntu resolves every
-// other name unchanged; it packages no `linux-image-amd64` and no
+// The two families differ in exactly two entries, which is what the gates
+// below hold and why everything above them is written once. Ubuntu resolves
+// every other name unchanged; it packages no `linux-image-amd64` and no
 // `firmware-linux-free`. `linux-image-generic` is the metapackage that tracks
 // its kernel, and `linux-firmware-minimal` is the **nearest** firmware match
 // rather than an equivalent one — it carried the qemu boot this base was
 // proved by on 2026-09-03 and nothing has yet compared what it holds against
 // Debian's on hardware.
-packages {
-    debian "linux-image-amd64" "firmware-linux-free" \
-           "dracut" "ostree" "composefs" \
-           "systemd-boot" "systemd-boot-efi" \
-           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
-           "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
-           "iproute2" \
-           "skopeo" "ca-certificates" "zstd" "curl" \
-           "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
-           "efibootmgr" "cryptsetup-bin" "dmsetup" \
-           "openssh-server" "sudo" "less" "man-db"
-    ubuntu "linux-image-generic" "linux-firmware-minimal" \
-           "dracut" "ostree" "composefs" \
-           "systemd-boot" "systemd-boot-efi" \
-           "shim-signed" "grub-efi-amd64-signed" "grub-common" \
-           "systemd-resolved" "libnss-resolve" "libnss-myhostname" \
-           "iproute2" \
-           "skopeo" "ca-certificates" "zstd" "curl" \
-           "btrfs-progs" "xfsprogs" "e2fsprogs" "dosfstools" "fdisk" \
-           "efibootmgr" "cryptsetup-bin" "dmsetup" \
-           "openssh-server" "sudo" "less" "man-db"
-}
+packages "dracut" "ostree" "composefs" "systemd-boot" "systemd-boot-efi" \
+    "shim-signed" "grub-efi-amd64-signed" "grub-common" "systemd-resolved" \
+    "libnss-resolve" "libnss-myhostname" "iproute2" "skopeo" \
+    "ca-certificates" "zstd" "curl" "btrfs-progs" "xfsprogs" "e2fsprogs" \
+    "dosfstools" "fdisk" "efibootmgr" "cryptsetup-bin" "dmsetup" \
+    "openssh-server" "sudo" "less" "man-db"
+
+family "debian" { packages "linux-image-amd64" "firmware-linux-free" }
+family "ubuntu" { packages "linux-image-generic" "linux-firmware-minimal" }
 
 fragment position="after"

@@ -33,7 +33,4 @@ provides-file "/usr/bin/crun"
 
 // Measured on both bases the same day: `podman` 5.8.6 with `crun` 1.28 on
 // `debian:forky`, `podman` 5.7.0 with `crun` 1.21 on `ubuntu:26.04`.
-packages {
-    debian "podman" "crun"
-    ubuntu "podman" "crun"
-}
+packages "podman" "crun"

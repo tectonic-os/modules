@@ -9,7 +9,6 @@ supports "fedora" "debian" "ubuntu"
 // `curl` and `git` are how it fetches itself and its taps. Fedora's base
 // already has all five, which is why the batch is deb-only. Resolved on both
 // deb bases 2026-09-05.
-packages {
-    debian "build-essential" "procps" "curl" "file" "git"
-    ubuntu "build-essential" "procps" "curl" "file" "git"
+family "debian" "ubuntu" {
+    packages "build-essential" "procps" "curl" "file" "git"
 }

@@ -8,6 +8,4 @@ provides "hardened-malloc"
 
 copr "secureblue/packages"
 
-packages {
-    fedora "hardened_malloc" "no_rlimit_as" enablerepo="secureblue/packages"
-}
+packages "hardened_malloc" "no_rlimit_as" enablerepo="secureblue/packages"

@@ -4,8 +4,7 @@ supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
 
-packages {
-    fedora "plymouth" "plymouth-theme-spinner"
-    debian "plymouth" "plymouth-themes"
-    ubuntu "plymouth" "plymouth-theme-spinner"
-}
+packages "plymouth"
+
+family "fedora" "ubuntu" { packages "plymouth-theme-spinner" }
+family "debian" { packages "plymouth-themes" }

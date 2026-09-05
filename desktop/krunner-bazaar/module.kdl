@@ -8,6 +8,4 @@ requires "bazaar"
 
 copr "ublue-os/packages"
 
-packages {
-    fedora "krunner-bazaar" enablerepo="ublue-os/packages"
-}
+packages "krunner-bazaar" enablerepo="ublue-os/packages"

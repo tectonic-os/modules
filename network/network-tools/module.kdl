@@ -6,11 +6,9 @@ supports "fedora" "debian" "ubuntu"
 // `gir1.2-avahi-0.6` is the GObject introspection data `avahi-gobject`
 // carries, and `netcat-openbsd` is what provides `nc` on both deb families
 // (`ncat` also resolves, and is not the default `nc` there).
-packages {
-    fedora "avahi-gobject" "avahi-tools" "cifs-utils" "nmap-ncat" "tcpdump" \
-            "traceroute" "wireguard-tools"
-    debian "gir1.2-avahi-0.6" "avahi-utils" "cifs-utils" "netcat-openbsd" \
-            "tcpdump" "traceroute" "wireguard-tools"
-    ubuntu "gir1.2-avahi-0.6" "avahi-utils" "cifs-utils" "netcat-openbsd" \
-            "tcpdump" "traceroute" "wireguard-tools"
+packages "cifs-utils" "tcpdump" "traceroute" "wireguard-tools"
+
+family "fedora" { packages "avahi-gobject" "avahi-tools" "nmap-ncat" }
+family "debian" "ubuntu" {
+    packages "gir1.2-avahi-0.6" "avahi-utils" "netcat-openbsd"
 }

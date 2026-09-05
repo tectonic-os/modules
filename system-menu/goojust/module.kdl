@@ -6,9 +6,7 @@ requires "just"
 
 provides "goojust"
 
-packages {
-    fedora "fastfetch"
-}
+family "fedora" { packages "fastfetch" }
 
 asset "goojust" {
     pin {

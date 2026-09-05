@@ -7,8 +7,6 @@ supports "fedora" "debian" "ubuntu"
 // Ubuntu carries it in `universe`, which that base does configure. So the
 // Debian image gets two of the three and the absence is stated here rather
 // than found at build time.
-packages {
-    fedora "borgbackup" "rclone" "restic"
-    debian "borgbackup" "restic"
-    ubuntu "borgbackup" "rclone" "restic"
-}
+packages "borgbackup" "restic"
+
+family "fedora" "ubuntu" { packages "rclone" }

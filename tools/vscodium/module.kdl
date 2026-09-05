@@ -6,6 +6,4 @@ after "hardened-malloc"
 
 requires "build-environment"
 
-packages {
-    fedora "codium" enablerepo="vscodium"
-}
+packages "codium" enablerepo="vscodium"

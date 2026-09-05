@@ -10,16 +10,15 @@ supports "fedora" "debian" "ubuntu"
 // `qemu-user-static-aarch64` has no deb counterpart: both families ship one
 // `qemu-user-binfmt` covering every emulated architecture, so the two Fedora
 // entries collapse to one.
-packages {
-    fedora "edk2-ovmf" "libvirt" "libvirt-nss" "qemu" "qemu-img" \
-            "qemu-system-x86-core" "qemu-user-binfmt" "qemu-user-static-aarch64" \
-            "virt-manager" "virt-v2v" "virt-viewer"
-    debian "ovmf" "libvirt-daemon-system" "libvirt-clients" "libnss-libvirt" \
-            "qemu-system-x86" "qemu-utils" "qemu-user-binfmt" \
-            "virt-manager" "virt-v2v" "virt-viewer"
-    ubuntu "ovmf" "libvirt-daemon-system" "libvirt-clients" "libnss-libvirt" \
-            "qemu-system-x86" "qemu-utils" "qemu-user-binfmt" \
-            "virt-manager" "virt-v2v" "virt-viewer"
+packages "qemu-user-binfmt" "virt-manager" "virt-v2v" "virt-viewer"
+
+family "fedora" {
+    packages "edk2-ovmf" "libvirt" "libvirt-nss" "qemu" "qemu-img" \
+        "qemu-system-x86-core" "qemu-user-static-aarch64"
+}
+family "debian" "ubuntu" {
+    packages "ovmf" "libvirt-daemon-system" "libvirt-clients" "libnss-libvirt" \
+        "qemu-system-x86" "qemu-utils"
 }
 
 // No `after "hardened-malloc"`, which this carried until 2026-09-05. The wrap

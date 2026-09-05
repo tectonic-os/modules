@@ -2,11 +2,7 @@ description "Flatpak client, first-boot install of the default app set, and a da
 
 supports "fedora" "debian" "ubuntu"
 
-packages {
-    fedora "flatpak"
-    debian "flatpak"
-    ubuntu "flatpak"
-}
+packages "flatpak"
 
 collects "flatpaks.list" into="/usr/share/flatpak-defaults/apps.list" priority=500
 

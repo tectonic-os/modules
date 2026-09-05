@@ -16,8 +16,11 @@ requires "build-environment"
 // before any module installs anything — measured 2026-09-03, `man1` 0 -> 459
 // pages. And the leg exists now. The whole Debian set resolves on
 // `ubuntu:26.04` unchanged, checked 2026-09-05.
-packages {
-    fedora "opensc" "pam-u2f" "pam_yubico" "pamu2fcfg" "pcsc-lite" "pcsc-lite-ccid" "yubikey-manager"
-    debian "opensc" "libpam-u2f" "libpam-yubico" "pamu2fcfg" "pcscd" "libccid" "yubikey-manager"
-    ubuntu "opensc" "libpam-u2f" "libpam-yubico" "pamu2fcfg" "pcscd" "libccid" "yubikey-manager"
+packages "opensc" "pamu2fcfg" "yubikey-manager"
+
+family "fedora" {
+    packages "pam-u2f" "pam_yubico" "pcsc-lite" "pcsc-lite-ccid"
+}
+family "debian" "ubuntu" {
+    packages "libpam-u2f" "libpam-yubico" "pcscd" "libccid"
 }

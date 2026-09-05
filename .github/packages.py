@@ -16,24 +16,56 @@ import re
 import sys
 from pathlib import Path
 
-BLOCK = re.compile(r"^packages \{\n(.*?)^\}", re.M | re.S)
 QUOTED = re.compile(r'"([^"]*)"')
+# `family "debian" "ubuntu" {` opening either a one-line or a braced gate.
+GATE = re.compile(r'^family((?:\s+"[^"]*")+)\s*\{(.*)$')
+PACKAGES = re.compile(r"^packages(\s.*)$")
 
 
 def lists(text, family):
-    """The package names one manifest declares for one family, or []."""
+    """Every package name one manifest installs on one family, in file order.
+
+    Outside a gate is every family the module supports; inside one is the
+    families it names. Both spellings of a gate are read: the one-liner
+    `family "x" { packages ... }` and the braced block over several lines.
+    """
     if not re.search(r'^supports .*"%s"' % re.escape(family), text, re.M):
         return []
-    block = BLOCK.search(text)
-    if not block:
-        return []
-    # A batch may be continued across lines with a trailing backslash.
-    body = block.group(1).replace("\\\n", " ")
-    for line in body.splitlines():
+    # A list may be continued across lines with a trailing backslash, and a
+    # `packages` inside a braced gate is indented.
+    names, gate, depth = [], None, 0
+    for line in text.replace("\\\n", " ").splitlines():
         line = line.strip()
-        if line.startswith(family + " "):
-            return QUOTED.findall(line)
-    return []
+        if not line or line.startswith("//"):
+            continue
+        if depth:
+            # Inside a braced gate: its `packages`, then its closing brace.
+            if line.startswith("}"):
+                depth, gate = 0, None
+                continue
+            if gate is not None and family in gate:
+                found = PACKAGES.match(line)
+                if found:
+                    names += QUOTED.findall(found.group(1))
+            continue
+        opened = GATE.match(line)
+        if opened:
+            gate = QUOTED.findall(opened.group(1))
+            rest = opened.group(2).strip()
+            if rest.endswith("}"):
+                # A one-liner: the whole gate is on this line.
+                if family in gate:
+                    found = PACKAGES.match(rest[:-1].strip())
+                    if found:
+                        names += QUOTED.findall(found.group(1))
+                gate = None
+            else:
+                depth = 1
+            continue
+        found = PACKAGES.match(line)
+        if found:
+            names += QUOTED.findall(found.group(1))
+    return names
 
 
 def main(argv):

@@ -2,6 +2,4 @@ description "Intel WiFi firmware for iwlwifi adapters"
 
 supports "fedora"
 
-packages {
-    fedora "iwlwifi-mvm-firmware" "iwlwifi-mld-firmware"
-}
+family "fedora" { packages "iwlwifi-mvm-firmware" "iwlwifi-mld-firmware" }

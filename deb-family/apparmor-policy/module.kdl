@@ -18,7 +18,4 @@ requires "build-environment"
 // No module preset: Debian's own postinst enables `apparmor.service` — checked,
 // `apparmor.service.dsh-also` is present — so a preset naming it would only
 // restate what the package already did.
-packages {
-    debian "apparmor" "apparmor-utils"
-    ubuntu "apparmor" "apparmor-utils"
-}
+packages "apparmor" "apparmor-utils"

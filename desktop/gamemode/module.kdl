@@ -2,8 +2,4 @@ description "GameMode, the daemon a game asks for the machine's full attention t
 
 supports "fedora" "debian" "ubuntu"
 
-packages {
-    fedora "gamemode"
-    debian "gamemode"
-    ubuntu "gamemode"
-}
+packages "gamemode"
