@@ -1,0 +1,15 @@
+# The daemon is the base's and the enablement is this module's: `openssh-server`
+# stays on every image so a machine is recoverable over the network *if* someone
+# turns it on, and no image listens because a Debian postinst said so. The base
+# undoes that postinst and `disable ssh.socket` in its own preset keeps
+# `preset-all` from re-enabling the socket on a first boot; this is the line
+# that opens the service half deliberately.
+#
+# It sits under `deb/` because the unit is `ssh.service` on both deb families
+# and `sshd.service` on Fedora, and that is a family fact rather than a distro
+# one. A `fedora/` copy naming `sshd.service` is what adding Fedora costs, once
+# `assets/bases.kdl` gives the fedora-bootc row the `provides-file` this module
+# requires. That was a `/etc/os-release` branch in `finalize.sh` until
+# 2026-09-06, because a preset is applied line by line and a unit that does not
+# exist fails the build, so one file could not say two things.
+enable ssh.service
