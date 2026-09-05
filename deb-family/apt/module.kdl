@@ -1,4 +1,4 @@
-description "The Debian base family: the build environment every layer runs in, and the root filesystem work that closes it"
+description "apt as the build environment every deb-family layer installs through, and the archive repairs a deb container image needs before it can"
 
 supports "debian" "ubuntu"
 

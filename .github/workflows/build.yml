@@ -23,7 +23,7 @@ on:
 #               collect order is declared, so two modules writing one path do
 #               not collide, the later silently wins, and the build cannot fail
 #               on overlap. The overlap is reported instead.
-#   bootc-base  the `deb-bootc-base` set alone, closed over `requires`, on a
+#   bootc-base  the `deb-family` set alone, closed over `requires`, on a
 #               Debian or Ubuntu container image rather than a bootc one. The
 #               set that turns the first into the second, built on its own so a
 #               failure in it is not read as a failure of the content above it.
@@ -76,13 +76,13 @@ jobs:
       IMAGE: ${{ matrix.image }}
       FAMILY: ${{ matrix.family }}
       # goojust pins an asset on a repository that does not resolve yet, and
-      # power-just-scripts requires it. Both return when that repository lands.
-      SKIP: goojust power-just-scripts
+      # just/power-scripts requires it. Both return when that repository lands.
+      SKIP: just/goojust just/power-scripts
       # The walk under `hardening/` finds every hardening mechanism.
       # `signature-policy` is added by name because it is not one: the
       # published hardening image needs the module declaring the cosign
       # public key.
-      HARDENING: signature-policy
+      HARDENING: updates/signature-policy
       # The profile the hardening image is measured by. SSG 0.1.71 carries no
       # CIS profile for Fedora, so a Level 1 floor is not available from this
       # content: the four it carries are cusp_fedora, ospp, pci-dss and
@@ -185,7 +185,7 @@ jobs:
                 -printf '%h\n' | sed 's|^\./||' | sort > "$NAMES"
               ;;
             bootc-base)
-              find deb-bootc-base -mindepth 2 -name module.kdl -printf '%h\n' \
+              find deb-family -mindepth 2 -name module.kdl -printf '%h\n' \
                 | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
             hardening)
@@ -265,7 +265,7 @@ jobs:
           # Both bootc-base legs build on a plain deb-family container image,
           # which is not a bootc image: `family` and `requires "bootc-base"`
           # are what the catalog writes out of that row, and the
-          # `deb-bootc-base` set is what satisfies the second.
+          # `deb-family` set is what satisfies the second.
           #
           # This fixup exists because the leg runs the *released* tool, and the
           # Ubuntu row lands in `assets/bases.kdl` one release after this module
@@ -309,7 +309,7 @@ jobs:
             "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
               --image "$IMAGE" --no-tui
             case "$name" in
-              cachyos-kernel)
+              boot/cachyos-kernel)
                 "$TECT_BIN" create key secureboot --root "$ROOT" --no-tui \
                   --cn "Collection CI"
                 ;;
@@ -320,7 +320,7 @@ jobs:
               login-access)
                 "$TECT_BIN" create key ssh --root "$ROOT" --no-tui
                 ;;
-              signature-policy)
+              updates/signature-policy)
                 mkdir -p "$ROOT/keys/public/etc/pki/containers"
                 openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:P-256 \
                   | openssl pkey -pubout \
@@ -419,7 +419,7 @@ jobs:
       # that Debian carried unnoticed for as long as it has existed, precisely
       # because nothing looked; a check only the newer family runs leaves the
       # older one free to regress. The man page count is the
-      # `dpkg.cfg.d/excludes` repair from `debian-family`, asserted where it
+      # `dpkg.cfg.d/excludes` repair from `deb-family/apt`, asserted where it
       # lands rather than where it runs.
       - name: Lint the built base
         if: matrix.image == 'bootc-base'

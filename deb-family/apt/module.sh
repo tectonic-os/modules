@@ -6,7 +6,7 @@
 # the other half, and every published Ubuntu bootc base skips it. Measured
 # 2026-09-03 on `ubuntu:26.04`: `man1` 0 -> 459 pages, 27s, 39 MB.
 #
-# Here rather than in `deb-bootc-base` because this is the module every deb
+# Here rather than in `deb-family/bootc` because this is the module every deb
 # build's closure puts first — it has to run before the first install of any
 # module, and `provides "build-environment"` is what guarantees that. `debian:*`
 # ships no such file and the guard is what makes this one module for both.

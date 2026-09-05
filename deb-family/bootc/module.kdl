@@ -16,7 +16,7 @@ requires "build-environment"
 // the *installed* machine needs a container runtime and not just the builder.
 // Declared here rather than folded into this module's package list, because it
 // is bootc's dependency and a repository should be told about it by `check`
-// before it builds. See `deb-bootc-base/podman` for the measurement.
+// before it builds. See `deb-family/podman` for the measurement.
 requires "container-runtime"
 
 // Deliberately *not* `provides "initramfs-generation"`, though this module does
