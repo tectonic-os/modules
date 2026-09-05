@@ -22,4 +22,16 @@ packages {
             "virt-manager" "virt-v2v" "virt-viewer"
 }
 
-after "hardened-malloc"
+// No `after "hardened-malloc"`, which this carried until 2026-09-05. The wrap
+// in `module.sh` exists *because* of hardened_malloc — it drops `LD_PRELOAD`
+// for virt-manager, which crashes under it — but the ordering bought nothing:
+// that module's entire overlay is one file,
+// `/etc/environment.d/30-hardened-malloc.conf`, and `environment.d` is read by
+// the systemd user manager rather than by any build step, so neither layer can
+// see or clobber the other whichever order they build in.
+//
+// It had to go, because `after` is a hard edge: a dangling one is an error, so
+// the declaration made this module unusable on any image without
+// hardened_malloc — every deb image, hardened_malloc being an rpm from
+// secureblue's COPR, and equally a Fedora image that simply does not want it.
+// The shim is inert where nothing is preloaded, so it is safe everywhere.
