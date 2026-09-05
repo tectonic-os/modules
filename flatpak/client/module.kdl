@@ -1,9 +1,11 @@
 description "Flatpak client, first-boot install of the default app set, and a daily update timer"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 packages {
     fedora "flatpak"
+    debian "flatpak"
+    ubuntu "flatpak"
 }
 
 collects "flatpaks.list" into="/usr/share/flatpak-defaults/apps.list" priority=500

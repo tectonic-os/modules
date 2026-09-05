@@ -1,6 +1,6 @@
 description "Bazaar, the Flatpak storefront"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 requires "flatpak"
 

@@ -1,14 +1,26 @@
 description "The two ways into a machine, neither of which a base should decide for one: ssh.service enabled, and a console account a hypervisor can create with systemd credentials"
 
-supports "debian"
+supports "debian" "ubuntu"
 
 // The package is the base's and the enablement is this module's, which is the
 // split the collection wants: `openssh-server` stays on every image so that a
 // machine is recoverable over the network *if* someone turns it on, and no
 // image listens because a Debian postinst said so. The base undoes that
-// postinst in its own finalize hook, and hooks run before the preset pass, so
-// there is no ordering between the two files to get wrong — this is the only
-// preset in the collection that names `ssh.service`.
+// postinst in its own finalize hook, and this module's hook runs after it in
+// resolved order, so there is no ordering between the two to get wrong.
+//
+// The enablement is in `finalize.sh` rather than a preset because the unit is
+// called `ssh.service` on the deb families and `sshd.service` on Fedora, and
+// a `.preset` is copied unconditionally and applied line by line. That unit
+// name was the reason this module claimed one family, and the hook closes it —
+// so `supports "ubuntu"` costs nothing now.
+//
+// **Fedora is still absent, and for a different reason, measured 2026-09-05.**
+// `requires-file "/usr/sbin/sshd"` is unsatisfied on a fedora-bootc image:
+// `assets/bases.kdl` gives `quay.io/fedora/fedora-bootc:44` no `provides-file`
+// at all, so `tect check` refuses the module even though the base ships the
+// binary. That is a catalog row to fix in the tool, not a fact about this
+// module; the `finalize.sh` already has the Fedora arm waiting for it.
 requires-file "/usr/sbin/sshd"
 
 // Enabling `ssh.service` without an authorized key leaves the network half

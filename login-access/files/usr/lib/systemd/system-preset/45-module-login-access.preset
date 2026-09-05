@@ -1,5 +1,0 @@
-# Every line here is applied with a plain `systemctl enable`, so the unit has to
-# exist on every family this module supports. `ssh.service` is Debian's name;
-# Fedora calls it `sshd.service`, which is why `supports` names one family and
-# why a port is a module change rather than a line here.
-enable ssh.service

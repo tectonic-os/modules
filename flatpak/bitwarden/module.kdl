@@ -1,5 +1,5 @@
 description "Bitwarden password manager"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 requires "flatpak"

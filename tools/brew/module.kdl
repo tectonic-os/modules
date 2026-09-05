@@ -1,3 +1,15 @@
 description "Homebrew, set up at first login, with a PATH shim for every shell"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
+
+// The units and the PATH shim are family-neutral; what is not is that
+// Homebrew's own installer builds from source and the deb bases carry no
+// toolchain. `build-essential` is the compiler and make, `procps` is the
+// `pgrep` the installer calls, `file` is what it identifies binaries with, and
+// `curl` and `git` are how it fetches itself and its taps. Fedora's base
+// already has all five, which is why the batch is deb-only. Resolved on both
+// deb bases 2026-09-05.
+packages {
+    debian "build-essential" "procps" "curl" "file" "git"
+    ubuntu "build-essential" "procps" "curl" "file" "git"
+}
