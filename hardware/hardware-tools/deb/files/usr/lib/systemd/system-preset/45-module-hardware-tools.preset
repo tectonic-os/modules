@@ -1,0 +1,12 @@
+# `lm_sensors.service` here and `lm-sensors.service` under `deb/`, matching the
+# package rename the manifest already gates: Fedora's `lm_sensors` and the deb
+# families' `lm-sensors`. A preset is applied line by line and a unit that does
+# not exist fails the build, so one file cannot name both — measured
+# 2026-09-05, `Failed to enable unit: Unit lm_sensors.service does not exist`
+# on the debian collection leg.
+enable lm-sensors.service
+
+# The same on all three: upstream names the unit with an underscore and neither
+# archive renames it. Repeated rather than left ungated so each family's preset
+# reads as the whole of what this module enables.
+enable intel_lpmd.service
