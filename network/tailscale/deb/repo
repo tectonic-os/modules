@@ -1,0 +1,11 @@
+source /ctx/lib/family.sh
+
+# Tailscale publishes one pool under a suite per distribution release, and the
+# `debian` and `ubuntu` trees differ only in that name -- the forky and
+# resolute indices are byte identical, checked 2026-09-07. So `$ID` and
+# `$VERSION_CODENAME` are all that separates the two families here, which is
+# why this is one `deb/repo` rather than a `debian/` and an `ubuntu/` one.
+. /etc/os-release
+add_repo "tailscale" \
+	"https://pkgs.tailscale.com/stable/${ID}" "$VERSION_CODENAME" "main" \
+	"https://pkgs.tailscale.com/stable/${ID}/${VERSION_CODENAME}.noarmor.gpg"

@@ -1,9 +1,16 @@
 description "VSCodium, the telemetry-free VS Code build"
 
-supports "fedora"
-
-after "hardened-malloc"
+supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
 
-packages "codium" enablerepo="vscodium"
+family "fedora" {
+    // hardened-malloc is a secureblue COPR package and has no deb analogue,
+    // so the wrapper `fedora/module.sh` writes has nothing to order against
+    // on either deb family.
+    after "hardened-malloc"
+
+    packages "codium" enablerepo="vscodium"
+}
+
+family "debian" "ubuntu" { packages "codium" }

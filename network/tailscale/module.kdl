@@ -1,7 +1,11 @@
 description "Tailscale mesh VPN client"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
 
-packages "tailscale" enablerepo="tailscale-stable"
+family "fedora" { packages "tailscale" enablerepo="tailscale-stable" }
+
+// Tailscale's own archive carries nothing else, so there is nothing to add it
+// disabled for: adding it is enabling it.
+family "debian" "ubuntu" { packages "tailscale" }

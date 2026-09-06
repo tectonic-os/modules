@@ -1,5 +1,14 @@
 description "NetBird mesh VPN client"
 
+// Fedora alone, and the reason is the deb rather than the archive. NetBird's
+// `.deb` ships one binary and no unit: its `postinst` runs `netbird service
+// install` and `netbird service start`, which writes the unit itself and then
+// starts it. Both fail in a container build -- measured on `debian:forky`
+// 2026-09-07, with and without systemd present and with `policy-rc.d` in
+// place, which does not reach a binary calling `systemctl` directly -- and
+// `start` failing leaves dpkg at `half-configured` and the layer red. The
+// route that would work is the upstream tarball through an `asset` pin with a
+// unit this module ships, which is a different module rather than a widening.
 supports "fedora"
 
 family "fedora" { packages "netbird" }
