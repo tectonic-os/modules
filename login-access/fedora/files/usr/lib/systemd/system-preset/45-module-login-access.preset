@@ -1,0 +1,16 @@
+# The Fedora half of this module's one line. The daemon is the base's —
+# `openssh-server` is in `quay.io/fedora/fedora-bootc:44` and
+# `assets/bases.kdl` says so with `provides-file "/usr/sbin/sshd"` — and the
+# enablement is this module's, the same split the `deb/` copy describes.
+#
+# The unit is `sshd.service` here and `ssh.service` on the deb families, which
+# is the whole reason this is a family directory: a preset is applied line by
+# line and a line naming a unit that does not exist fails the build, so one
+# file could not say both.
+#
+# Fedora's own `90-default.preset` already enables it, so on this family the
+# line changes nothing about the built image. It is here because the module's
+# claim is that *it* opens ssh: an image that gets the daemon enabled only
+# because the distro's default preset happened to say so has no way to notice
+# when that changes, and `45-` is read before `90-` either way.
+enable sshd.service

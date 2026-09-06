@@ -1,31 +1,31 @@
-description "The two ways into a machine, neither of which a base should decide for one: ssh.service enabled, and a console account a hypervisor can create with systemd credentials"
+description "The two ways into a machine, neither of which a base should decide for one: the ssh daemon enabled, and a console account a hypervisor can create with systemd credentials"
 
-supports "debian" "ubuntu"
+supports "fedora" "debian" "ubuntu"
 
 // The package is the base's and the enablement is this module's, which is the
-// split the collection wants: `openssh-server` stays on every image so that a
+// split the collection wants: `openssh-server` is on every image so that a
 // machine is recoverable over the network *if* someone turns it on, and no
-// image listens because a Debian postinst said so. The base undoes that
-// postinst in its own finalize hook, and this module's hook runs after it in
-// resolved order, so there is no ordering between the two to get wrong.
+// image listens because something upstream of it said so. On the deb families
+// that something is a Debian postinst, which `deb-family/bootc-base` undoes in
+// its own finalize hook before this module's preset opens it deliberately; on
+// Fedora it is `90-default.preset`, which this module's `45-` preset is read
+// in front of.
 //
-// The enablement is a preset under `deb/`, which is taken on Debian and Ubuntu
-// and on nothing else. It was a `/etc/os-release` branch in `finalize.sh` until
-// 2026-09-06: a preset is copied unconditionally and applied line by line, so
-// a unit that does not exist fails the build and one file could not name both
-// `ssh.service` and `sshd.service`. A family directory is two files, and the
-// branch went with the hook.
+// The enablement is a preset under `deb/` and a second under `fedora/`. It was
+// a `/etc/os-release` branch in `finalize.sh` until 2026-09-06: a preset is
+// copied unconditionally and applied line by line, so a unit that does not
+// exist fails the build and one file could not name both `ssh.service` and
+// `sshd.service`. A family directory is two files, and the branch went with the
+// hook.
 //
-// **Fedora is still absent, and for a different reason, measured 2026-09-05.**
-// `requires-file "/usr/sbin/sshd"` is unsatisfied on a fedora-bootc image:
-// `assets/bases.kdl` gives `quay.io/fedora/fedora-bootc:44` no `provides-file`
-// at all, so `tect check` refuses the module even though the base ships the
-// binary. That is a catalog row to fix in the tool, not a fact about this
-// module; adding the family is then `supports "fedora"` and a `fedora/` copy of
-// the preset naming `sshd.service`.
+// Fedora arrived on 2026-09-07 and cost exactly that second file. The module
+// had been refused there since it was written, and not for anything about
+// Fedora: `assets/bases.kdl` gave `quay.io/fedora/fedora-bootc:44` no
+// `provides-file` at all, so the line below was unsatisfied on a base that
+// ships the binary. The row was the defect and the row was fixed.
 requires-file "/usr/sbin/sshd"
 
-// Enabling `ssh.service` without an authorized key leaves the network half
+// Enabling the daemon without an authorized key leaves the network half
 // dormant: the daemon listens and nobody can answer it. This is the key that
 // closes it, and it is the repository's rather than the module's — `tect create
 // key ssh` writes the pair, the public half ships at the path below, and the
