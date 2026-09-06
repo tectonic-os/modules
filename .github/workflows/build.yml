@@ -316,7 +316,10 @@ jobs:
         if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
-          claiming="$(grep -rl '^satisfies' --include=module.kdl . \
+          # `-E '^[[:space:]]*satisfies'`, not `'^satisfies'`: a claim inside a
+          # `family` gate is indented, and the anchored pattern stopped seeing
+          # every one of them the day the hardening claims were gated.
+          claiming="$(grep -rlE '^[[:space:]]*satisfies' --include=module.kdl . \
             | sed 's|^\./||;s|/module\.kdl$||' | sort)"
           stray="$(comm -23 <(printf '%s\n' "$claiming") <(sort "$NAMES") || true)"
           if [ -n "$stray" ]; then

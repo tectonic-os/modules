@@ -1,0 +1,8 @@
+Name: Clear the failure count on a successful login
+Default: yes
+Priority: 0
+Auth-Type: Additional
+Auth:
+	required	pam_faillock.so authsucc
+Auth-Initial:
+	required	pam_faillock.so authsucc

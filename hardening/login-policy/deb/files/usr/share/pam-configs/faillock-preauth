@@ -1,0 +1,8 @@
+Name: Count login failures before the password is checked
+Default: yes
+Priority: 1024
+Auth-Type: Primary
+Auth:
+	requisite	pam_faillock.so preauth
+Auth-Initial:
+	requisite	pam_faillock.so preauth

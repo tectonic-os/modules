@@ -1,6 +1,15 @@
 description "Login policy: faillock lockout, password quality, rescue sulogin"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
+
+// On a deb family the two config files this module ships are inert until
+// something puts the modules that read them in the stack, which is what
+// `deb/files/usr/share/pam-configs/` and `deb/finalize.sh` do. `cracklib-runtime`
+// is not optional there: `dictcheck = 1` without a dictionary fails **every**
+// password change rather than falling back.
+family "debian" "ubuntu" {
+    packages "libpam-pwquality" "cracklib-runtime"
+}
 
 // This module shipped `disable sshd.service` in a preset until 2026-09-07 and
 // no longer does, because it was a posture rather than a claim and it collided
@@ -21,9 +30,17 @@ supports "fedora"
 // So ssh is `login-access`'s to decide, and an image wanting the old behaviour
 // declines to import it rather than importing two modules that disagree.
 
-satisfies {
-    stig "CCI-001619" \
-        "CCI-000194" \
-        "CCI-000195"
-    nist "AC-7.1(ii)"
+// The claim is Fedora's alone because a benchmark number is not portable
+// across families. Measured 2026-09-07: `ssg-debian13-ds.xml` and
+// `ssg-ubuntu2404-ds.xml` carry no CCI number and no `AC-7.1(ii)` -- DISA is
+// written as `SRG-OS-…` there -- so all four name nothing on a deb scan. The
+// faillock and pwquality rules those datastreams do carry are claimed once the
+// deb hardening leg has measured this image against them, not before.
+family "fedora" {
+    satisfies {
+        stig "CCI-001619" \
+            "CCI-000194" \
+            "CCI-000195"
+        nist "AC-7.1(ii)"
+    }
 }

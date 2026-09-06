@@ -1,7 +1,17 @@
 description "su is for wheel: pam_wheel refuses everyone else"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
-satisfies {
-    stig "SRG-OS-000312-GPOS-00123"
+// Fedora alone, because `SRG-OS-000312-GPOS-00123` names a different rule on
+// the deb content and the claim would measure something this module does not
+// do. Measured 2026-09-07: in `ssg-debian13-ds.xml` that SRG is carried by
+// `package_apparmor_installed`, `apparmor_configured` and the two
+// `sysctl_fs_protected_*` rules and by nothing about `su`. A claim resolves to
+// the first rule in document order carrying the number, so the deb copy of this
+// claim would have passed -- on the base's AppArmor, having measured nothing
+// this module did.
+family "fedora" {
+    satisfies {
+        stig "SRG-OS-000312-GPOS-00123"
+    }
 }

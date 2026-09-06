@@ -1,9 +1,17 @@
 description "Login defaults: password ageing, length, failure delay and umask"
 
-supports "fedora"
+supports "fedora" "debian" "ubuntu"
 
-satisfies {
-    stig "CCI-000199" \
-        "CCI-000198"
-    anssi "BP28(R35)"
+// The claim is gated and the module is not, because a benchmark number is not
+// portable across families. `ssg-debian13-ds.xml` and `ssg-ubuntu2404-ds.xml`
+// carry **no** CCI number and no `BP28(...)` at all -- measured 2026-09-07:
+// DISA is written as `SRG-OS-…` there and ANSSI as a bare `R35`. So these three
+// name nothing on a deb scan, and `tect scap` would report the declaration as
+// wrong rather than the image.
+family "fedora" {
+    satisfies {
+        stig "CCI-000199" \
+            "CCI-000198"
+        anssi "BP28(R35)"
+    }
 }

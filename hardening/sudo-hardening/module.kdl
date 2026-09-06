@@ -4,6 +4,14 @@ supports "fedora" "debian" "ubuntu"
 
 mode "/etc/sudoers.d/99-hardening" "0440"
 
+// The one claim in this collection that needs no gate. `Req-10.2.5` resolves to
+// `sudo_add_use_pty` on all three datastreams -- first in document order on the
+// deb pair too, ahead of the five `audit_rules_usergroup_modification_*` that
+// also carry it -- and `use_pty` is what this module sets. Checked 2026-09-07
+// rather than assumed, because the sibling modules show that a number naming
+// one rule on Fedora routinely names another elsewhere. Only the Fedora leg
+// scans, so what this buys today is that the claim would still be true if a
+// deb leg ever could.
 satisfies {
     pci-dss "Req-10.2.5"
 }
