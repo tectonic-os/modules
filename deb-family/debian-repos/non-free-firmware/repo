@@ -1,0 +1,16 @@
+# `debian:forky` ships one deb822 file with two stanzas -- the archive and
+# security -- and `Components: main` in both. The firmware lives in
+# `non-free-firmware`, a component of the same archive signed by the same
+# keyring, so there is nothing to add and nothing to trust: the component is
+# named or it is not.
+#
+# Edited in place rather than written as a second `.sources`, because a second
+# file naming the same suite is a duplicate apt warns about on every update.
+# Idempotent by the inner match, so a rebuild does not append it twice.
+sources=/etc/apt/sources.list.d/debian.sources
+if [ ! -f "$sources" ]; then
+	echo "no $sources: this base does not configure apt the way debian:forky does" >&2
+	exit 1
+fi
+sed -i '/^Components:/ { /non-free-firmware/! s/$/ non-free-firmware/ }' "$sources"
+grep -q 'non-free-firmware' "$sources"
