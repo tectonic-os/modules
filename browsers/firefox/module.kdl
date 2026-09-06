@@ -1,0 +1,7 @@
+description "Firefox from Mozilla's own apt archive"
+
+supports "debian" "ubuntu"
+
+requires "build-environment"
+
+packages "firefox"

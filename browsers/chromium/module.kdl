@@ -1,0 +1,10 @@
+description "Chromium from Debian sid, forky's being two releases behind"
+
+// No Ubuntu leg: `chromium` there is a snap transitional and there is no sid
+// to reach past it, so the module would install a package that installs
+// nothing.
+supports "debian"
+
+requires "build-environment"
+
+packages "chromium"

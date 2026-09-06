@@ -1,0 +1,25 @@
+# Debian's own archive one suite further on, so there is no key to add:
+# `debian-archive-keyring` already carries sid's, and the same two keys sign
+# forky and sid -- checked 2026-09-07.
+#
+# An unpinned `sid` entry does not add one package, it offers apt a newer
+# everything, and the next `apt upgrade` takes the machine to unstable. So the
+# suite goes in at priority 1 -- present, never preferred -- and chromium's
+# own binary packages are the only ones lifted back above forky's.
+cat > /etc/apt/sources.list.d/debian-sid.sources <<'EOF'
+Types: deb
+URIs: http://deb.debian.org/debian
+Suites: sid
+Components: main
+Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
+EOF
+
+cat > /etc/apt/preferences.d/debian-sid <<'EOF'
+Package: *
+Pin: release n=sid
+Pin-Priority: 1
+
+Package: chromium chromium-common chromium-sandbox chromium-l10n chromium-driver
+Pin: release n=sid
+Pin-Priority: 990
+EOF
