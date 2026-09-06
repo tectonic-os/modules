@@ -5,4 +5,19 @@ supports "fedora"
 requires "build-environment"
 requires "selinux-policy"
 
+// `trivalent-selinux`'s policy module requires `flatpak_home_t`, which
+// `flatpak-selinux` defines and `flatpak` pulls in, so `semodule -i` in its
+// `%post` cannot resolve without flatpak already in the image. Measured
+// 2026-09-06 on `quay.io/fedora/fedora-bootc:44`: installing the rpm alone
+// gives *"Failed to resolve typeattributeset statement at .../trivalent/cil:58"*,
+// and the same rpm over a layer carrying `flatpak` loads the module.
+//
+// This is an ordering the module never declared and got for free: while it was
+// `trivalent` it sorted after `flatpak` on the tie-break, and renaming it
+// `browsers/trivalent` put it in front. That is what turned the fedora leg red
+// on 2026-09-05, not the `-447128` to `-447136` move it looked like — those two
+// builds are the same noarch package built once per architecture, byte
+// identical in payload, scriptlets and requires, so no pin reaches this.
+requires "flatpak"
+
 packages "trivalent" "trivalent-qt6-ui" "trivalent-selinux" enablerepo="secureblue"
