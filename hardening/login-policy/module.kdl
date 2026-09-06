@@ -1,6 +1,25 @@
-description "Login policy: no sshd, faillock lockout, password quality, rescue sulogin"
+description "Login policy: faillock lockout, password quality, rescue sulogin"
 
 supports "fedora"
+
+// This module shipped `disable sshd.service` in a preset until 2026-09-07 and
+// no longer does, because it was a posture rather than a claim and it collided
+// with the module that owns the question. **It backed nothing measured**:
+// `service_sshd_disabled` scans `notapplicable` under `cusp_fedora`, and every
+// `satisfies` below is faillock or pwquality. Meanwhile `login-access` exists
+// to say that neither a base nor a hardening default should decide whether a
+// machine is reachable, and it enables the same unit.
+//
+// Both landed in the fedora collection image on 2026-09-07 and contradicted
+// each other. `finalize.sh` applies presets as `systemctl enable`/`disable` per
+// line in glob order, so **the last file wins** — the two are `45-module-login-
+// access` and `45-module-login-policy`, and the disable took it on nothing but
+// the alphabet. It surfaced only because `validate-image` checks that an
+// `enable` took effect and does not check the other direction: sorted the
+// other way, this line would have lost in silence.
+//
+// So ssh is `login-access`'s to decide, and an image wanting the old behaviour
+// declines to import it rather than importing two modules that disagree.
 
 satisfies {
     stig "CCI-001619" \
