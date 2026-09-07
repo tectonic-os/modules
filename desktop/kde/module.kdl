@@ -27,6 +27,21 @@ family "fedora" {
         "systemd-oomd-defaults" "pipewire-pulseaudio" "NetworkManager-wifi" \
         "NetworkManager-bluetooth" "wpa_supplicant"
 }
+// Ubuntu splits the session files out of `plasma-workspace`, and debian does
+// not: `plasma-session-wayland` carries /usr/share/wayland-sessions/plasma.desktop
+// and `plasma-session-x11` carries /usr/share/xsessions/plasmax11.desktop, and
+// neither name exists on debian:forky. Without them sddm draws a greeter with
+// nothing to log in to, so a correct password goes nowhere and the machine
+// reads as hung. Measured 2026-09-08 on the two built images: debian carries
+// both files from `plasma-workspace`, ubuntu carries neither and `dpkg -L
+// plasma-workspace` there lists no session file at all.
+//
+// The packages leg cannot see this. It resolves every name a module declares
+// and says nothing about which files arrive, so a package that stops shipping
+// one is invisible to it.
+family "ubuntu" {
+    packages "plasma-session-wayland" "plasma-session-x11"
+}
 family "debian" "ubuntu" {
     packages "systemsettings" "sddm" "sddm-theme-breeze" "kwin-wayland" \
         "kwin-x11" "kde-cli-tools" "breeze" "kde-config-gtk-style" \
