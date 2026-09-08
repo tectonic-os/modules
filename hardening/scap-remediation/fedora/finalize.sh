@@ -10,7 +10,16 @@ else
     # Installed, used and removed inside the finalize layer's one RUN, so none
     # of it reaches the image. scap-security-guide alone is 708 MiB installed,
     # 468 MiB of that datastreams for other products.
-    dnf -y install openscap-utils scap-security-guide openscap-engine-sce setools-console
+    # Only what was not already here comes back out again: `dnf install` is a
+    # no-op on a package the base ships, and `dnf remove` is not. setools-console
+    # in particular is a plausible dependency of something else.
+    scap_added=()
+    for scap_pkg in openscap-utils scap-security-guide openscap-engine-sce setools-console; do
+        rpm -q "${scap_pkg}" >/dev/null 2>&1 || scap_added+=("${scap_pkg}")
+    done
+    if [ "${#scap_added[@]}" -gt 0 ]; then
+        dnf -y install "${scap_added[@]}"
+    fi
 
     # What no remediation may touch: what a module refuses outright, and every
     # rule a module claims. A claim holds only while the module is what makes
@@ -63,7 +72,9 @@ else
     # The report is not baked: it is 31 MiB, and what wants it is a CI
     # attestation against the published digest rather than every running image.
     # The counts above are what the build log keeps.
-    dnf -y remove openscap-utils scap-security-guide openscap-engine-sce setools-console
+    if [ "${#scap_added[@]}" -gt 0 ]; then
+        dnf -y remove "${scap_added[@]}"
+    fi
     dnf -y clean all
     rm -f /tmp/tect-tailoring.xml /tmp/tect-scap-arf.xml
 fi

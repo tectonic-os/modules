@@ -7,5 +7,11 @@ supports "fedora"
 // without being remediated is a real thing to want.
 provides "scap-remediation"
 
+// Two limits found in review on 2026-09-09 and not closed here, both recorded
+// in ../../planning.md. The finalize layer mounts /var/log and /var/cache as
+// build caches and holds /opt aside, so a fix writing there is reported and
+// then discarded. And hooks share one layer in resolved order, so this one is
+// below every module *layer* but not necessarily below every module *hook*.
+
 // No `satisfies`. The rules this closes are SSG's work, not this module's, and
 // a claim here would say the module makes them pass when the content does.
