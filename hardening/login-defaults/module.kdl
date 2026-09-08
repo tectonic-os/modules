@@ -8,6 +8,14 @@ supports "fedora" "debian" "ubuntu"
 // DISA is written as `SRG-OS-…` there and ANSSI as a bare `R35`. So these three
 // name nothing on a deb scan, and `tect scap` would report the declaration as
 // wrong rather than the image.
+// `module.sh` leaves ENCRYPT_METHOD alone because the base is on yescrypt and
+// the rule asks for SHA512, which is weaker. Declared here so that SSG's own
+// remediation, which runs below every module layer, does not set it back.
+// Written as a rule ID: a refusal has to be able to name a rule no benchmark
+// number reaches.
+refuses "set_password_hashing_algorithm_logindefs" \
+    because="the base is on yescrypt and this rule asks for SHA512, so passing it would weaken the image"
+
 family "fedora" {
     satisfies {
         stig "CCI-000199" \
