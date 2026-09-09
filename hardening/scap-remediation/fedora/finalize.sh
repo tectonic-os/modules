@@ -70,6 +70,18 @@ else
         exit 1
     fi
 
+    # Remediation writes the rpm database — it installs and removes packages —
+    # and a database it damages is not something the build notices otherwise:
+    # `rpm -qa` exits 0 and reports on stderr, `dnf remove` below exits 0 on a
+    # database it cannot read, and `bootc container lint` passes the image.
+    # Rootless podman on fuse-overlayfs corrupts it here every run.
+    scap_rpmdb="$(rpm -qa 2>&1 > /dev/null)"
+    if [ -n "${scap_rpmdb}" ]; then
+        echo "scap-remediation: the rpm database is unreadable after remediation"
+        echo "${scap_rpmdb}"
+        exit 1
+    fi
+
     # The report is not baked: it is 31 MiB, and what wants it is a CI
     # attestation against the published digest rather than every running image.
     # The counts above are what the build log keeps.
