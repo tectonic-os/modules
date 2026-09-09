@@ -15,7 +15,7 @@ else
     # in particular is a plausible dependency of something else.
     scap_added=()
     for scap_pkg in openscap-utils scap-security-guide openscap-engine-sce setools-console; do
-        rpm -q "${scap_pkg}" >/dev/null 2>&1 || scap_added+=("${scap_pkg}")
+        rpm -q "${scap_pkg}" > /dev/null 2>&1 || scap_added+=("${scap_pkg}")
     done
     if [ "${#scap_added[@]}" -gt 0 ]; then
         dnf -y install "${scap_added[@]}"
@@ -48,14 +48,15 @@ else
         echo "scap-remediation: $((${#scap_unselect[@]} / 2)) rules left to their owners"
     fi
 
-    # oscap exits non-zero whenever any rule fails, which is the ordinary case
-    # and not a build failure. oscap-im swallows 0 and 2 itself and still
-    # returns non-zero for a bootloader rule that cannot run in a container.
-    # oscap exits non-zero whenever any rule fails, which is the ordinary case
-    # and not a build failure, so the outcome is read off the report instead.
+    # oscap-im swallows oscap's 0 and 2 itself and still returns non-zero for a
+    # bootloader rule that cannot run in a container, so the outcome is read off
+    # the report instead.
     oscap-im --profile "${scap_profile}" "${scap_tailoring[@]}" \
         --results-arf /tmp/tect-scap-arf.xml "${SCAP_CONTENT}" || true
-    [ -s /tmp/tect-scap-arf.xml ] || { echo "scap-remediation: the scan wrote no report"; exit 1; }
+    [ -s /tmp/tect-scap-arf.xml ] || {
+        echo "scap-remediation: the scan wrote no report"
+        exit 1
+    }
 
     # A non-empty report proves oscap started and nothing else. An unmatched
     # profile name evaluates every rule `notselected` and still writes one, so
