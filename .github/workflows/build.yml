@@ -71,7 +71,7 @@ jobs:
             {"image":"collection","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"bootc-base","family":"debian","base":"docker.io/library/debian:forky"},
             {"image":"bootc-base","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"},
-            {"image":"hardening","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
+            {"image":"hardening","family":"fedora","base":"quay.io/centos-bootc/centos-bootc:stream10"},
             {"image":"changed","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"changed","family":"debian","base":"docker.io/library/debian:forky"},
             {"image":"changed","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"}
@@ -172,21 +172,15 @@ jobs:
       # published hardening image needs the module declaring the cosign
       # public key.
       HARDENING: updates/signature-policy
-      # The profile the hardening image is measured by. SSG 0.1.71 carries no
-      # CIS profile for Fedora, so a Level 1 floor is not available from this
-      # content: the four it carries are cusp_fedora, ospp, pci-dss and
-      # standard. cusp_fedora is the Fedora-specific one and the widest, 272
-      # rules selected, and it is where the modules moved the score: the bare
-      # base fails 18 of it and this image fails 6. standard would be a floor
-      # of 5 against a base of 7 and would hold almost nothing.
-      CONFORMS: cusp_fedora
-      # The floor, chosen on 2026-08-26 at what was measured, and moved only by
-      # editing this line. `--baseline` is the other half and a different
-      # instrument: it holds the rules and drifts to the last run, so it sees a
-      # single rule lost between two runs that both meet this number. Failures
-      # rather than passes, because a rule the content stops selecting drops
-      # both counts and only one of them is a regression.
-      MAX_FAILS: "6"
+      # The profile the hardening image is measured by, on CentOS Stream 10.
+      CONFORMS: cis_server_l1
+      # The floor, measured on 2026-09-10, and moved only by editing this
+      # line. `--baseline` is the other half and a different instrument: it
+      # holds the rules and drifts to the last run, so it sees a single rule
+      # lost between two runs that both meet this number. Failures rather than
+      # passes, because a rule the content stops selecting drops both counts
+      # and only one of them is a regression.
+      MAX_FAILS: "19"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -278,9 +272,11 @@ jobs:
                 | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
             hardening)
+              # hardened_malloc comes out of a Fedora COPR, and this leg is CentOS Stream 10.
               {
                 printf '%s\n' $HARDENING
-                find hardening -mindepth 2 -name module.kdl -printf '%h\n'
+                find hardening -mindepth 2 -name module.kdl -printf '%h\n' \
+                  | grep -vx hardening/hardened-malloc
               } | sort -u \
                 | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
@@ -538,48 +534,41 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/baseline.json
-          key: scap-${{ matrix.image }}-${{ github.run_id }}
-          restore-keys: scap-${{ matrix.image }}-
+          key: scap-tailored-${{ matrix.image }}-${{ github.run_id }}
+          restore-keys: scap-tailored-${{ matrix.image }}-
 
-      - name: Install the SSG content
-        if: matrix.image == 'hardening'
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends ssg-base ssg-nondebian
-          datastream=/usr/share/xml/scap/ssg/content/ssg-fedora-ds.xml
-          [ -s "$datastream" ]
-          echo "DATASTREAM=${datastream}" >> "$GITHUB_ENV"
-
-      - name: Confirm the image under test
-        if: matrix.image == 'hardening'
-        run: |
-          set -euo pipefail
-          sudo podman image exists "${IMAGE}:latest"
-          cp "$DATASTREAM" "${RUNNER_TEMP}/ds.xml"
-
+      # The content is the image's own: the revision the build remediated
+      # with, installed into a copy of the image that is thrown away. Files go
+      # in and out with `podman cp`, since a bind mount of runner-owned files
+      # fails the unowned-file rules. From outside, a mounted rootfs reads
+      # almost every rule notapplicable.
       - name: Evaluate the rules
         if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
-          # The scanner is installed inside the image being measured, over the
-          # network, on every scan, so a transient mirror error is the same red X as
-          # a false claim. It retries rather than failing the run. The scanner must
-          # stay inside the image: scanning a mounted rootfs from outside returns
-          # 992 of 994 rules notapplicable.
-          sudo podman run --rm --entrypoint "" \
-            -v "${RUNNER_TEMP}:/scan:z" "${IMAGE}:latest" \
-            sh -c 'n=0
-              until dnf -y install openscap-scanner >/dev/null; do
-                n=$((n+1))
-                [ "$n" -ge 3 ] && exit 1
-                dnf clean all
-                sleep 15
-              done
-              oscap xccdf eval --profile "(all)" \
-                --results-arf /scan/arf.xml /scan/ds.xml' || true
+          content="$(cd "$ROOT" && "$TECT_BIN" scap content --target "$IMAGE")"
+          sudo podman run -d --name scan --entrypoint "" "${IMAGE}:latest" sleep infinity
+          # A transient mirror error is the same red X as a false claim, so
+          # the install retries.
+          sudo podman exec scan sh -c 'n=0
+            until dnf -y install openscap-scanner scap-security-guide >/dev/null; do
+              n=$((n+1))
+              [ "$n" -ge 3 ] && exit 1
+              dnf clean all
+              sleep 15
+            done'
+          sudo podman cp "scan:${content}" "${RUNNER_TEMP}/ds.xml"
+          (cd "$ROOT" && "$TECT_BIN" scap tailoring --target "$IMAGE" \
+            --datastream "${RUNNER_TEMP}/ds.xml") > "${RUNNER_TEMP}/tailoring.xml"
+          sudo podman cp "${RUNNER_TEMP}/tailoring.xml" scan:/tmp/tailoring.xml
+          sudo podman exec scan oscap xccdf eval \
+            --tailoring-file /tmp/tailoring.xml --profile xccdf_tect_profile_measured \
+            --results-arf /tmp/arf.xml "$content" || true
+          sudo podman cp scan:/tmp/arf.xml "${RUNNER_TEMP}/arf.xml"
+          sudo podman rm -f scan
+          sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/ds.xml" "${RUNNER_TEMP}/arf.xml"
           [ -s "${RUNNER_TEMP}/arf.xml" ]
-          sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/arf.xml"
+          echo "DATASTREAM=${RUNNER_TEMP}/ds.xml" >> "$GITHUB_ENV"
 
       - name: Compare what was declared to what was measured
         if: matrix.image == 'hardening'
@@ -590,7 +579,7 @@ jobs:
           # module's work. It adds a column before Result and moves no row.
           report="$("$TECT_BIN" scap "${RUNNER_TEMP}/arf.xml" \
             --root "$ROOT" --target "$IMAGE" --datastream "$DATASTREAM" \
-            --base-scan "${GITHUB_WORKSPACE}/.ci/fedora-bootc-44-base-scan.json" \
+            --base-scan "${GITHUB_WORKSPACE}/.ci/centos-bootc-stream10-base-scan.json" \
             --baseline "${RUNNER_TEMP}/baseline.json")"
           printf '%s\n' "$report"
           # The scaffolded repository does not enforce, so `tect scap` reports
@@ -643,4 +632,4 @@ jobs:
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/baseline.json
-          key: scap-${{ matrix.image }}-${{ github.run_id }}
+          key: scap-tailored-${{ matrix.image }}-${{ github.run_id }}
