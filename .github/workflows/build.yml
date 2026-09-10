@@ -174,13 +174,14 @@ jobs:
       HARDENING: updates/signature-policy
       # The profile the hardening image is measured by, on CentOS Stream 10.
       CONFORMS: cis_server_l1
-      # The floor, measured on 2026-09-10, and moved only by editing this
-      # line. `--baseline` is the other half and a different instrument: it
-      # holds the rules and drifts to the last run, so it sees a single rule
-      # lost between two runs that both meet this number. Failures rather than
-      # passes, because a rule the content stops selecting drops both counts
-      # and only one of them is a regression.
-      MAX_FAILS: "19"
+      # The floor is the runner's count, since its kernel answers the
+      # `sysctl_*` rules, and moves only by editing this line. `--baseline` is
+      # the other half and a different instrument: it holds the rules and
+      # drifts to the last run, so it sees a single rule lost between two runs
+      # that both meet this number. Failures rather than passes, because a
+      # rule the content stops selecting drops both counts and only one of
+      # them is a regression.
+      MAX_FAILS: "21"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -626,6 +627,16 @@ jobs:
           if [ "$fails" -lt "$MAX_FAILS" ]; then
             echo "::notice::the floor is loose and could come down to ${fails}"
           fi
+
+      # The report counts failures and names none; the ARF names them.
+      - name: Keep the scan report
+        if: always() && matrix.image == 'hardening'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arf-${{ matrix.image }}
+          path: ${{ runner.temp }}/arf.xml
+          retention-days: 7
+          if-no-files-found: ignore
 
       - name: Save the pass set for the next scan
         if: always() && matrix.image == 'hardening'
