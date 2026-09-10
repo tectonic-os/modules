@@ -30,17 +30,14 @@ family "debian" "ubuntu" {
 // So ssh is `login-access`'s to decide, and an image wanting the old behaviour
 // declines to import it rather than importing two modules that disagree.
 
-// The claim is Fedora's alone because a benchmark number is not portable
-// across families. Measured 2026-09-07: `ssg-debian13-ds.xml` and
-// `ssg-ubuntu2404-ds.xml` carry no CCI number and no `AC-7.1(ii)` -- DISA is
-// written as `SRG-OS-…` there -- so all four name nothing on a deb scan. The
-// faillock and pwquality rules those datastreams do carry are claimed once the
-// deb hardening leg has measured this image against them, not before.
+// The claim is gated and the module is not: `ssg-debian13-ds.xml` carries no
+// `AC-7.1(ii)`, and two of the three SRG numbers reach other rules there --
+// measured 2026-09-09.
 family "fedora" {
     satisfies {
-        stig "CCI-001619" \
-            "CCI-000194" \
-            "CCI-000195"
+        stig "SRG-OS-000071-GPOS-00039" \
+            "SRG-OS-000072-GPOS-00040" \
+            "SRG-OS-000266-GPOS-00101"
         nist "AC-7.1(ii)"
     }
 }

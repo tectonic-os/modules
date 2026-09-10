@@ -2,24 +2,23 @@ description "Login defaults: password ageing, length, failure delay and umask"
 
 supports "fedora" "debian" "ubuntu"
 
-// The claim is gated and the module is not, because a benchmark number is not
-// portable across families. `ssg-debian13-ds.xml` and `ssg-ubuntu2404-ds.xml`
-// carry **no** CCI number and no `BP28(...)` at all -- measured 2026-09-07:
-// DISA is written as `SRG-OS-…` there and ANSSI as a bare `R35`. So these three
-// name nothing on a deb scan, and `tect scap` would report the declaration as
-// wrong rather than the image.
 // `module.sh` leaves ENCRYPT_METHOD alone because the base is on yescrypt and
 // the rule asks for SHA512, which is weaker. Declared here so that SSG's own
 // remediation, which runs below every module layer, does not set it back.
 // Written as a rule ID: a refusal has to be able to name a rule no benchmark
 // number reaches.
+// yescrypt sits outside the FIPS 140 module boundary and SHA-512 crypt is
+// inside it, so a FIPS image lifts this with `allow-remediation`.
 refuses "set_password_hashing_algorithm_logindefs" \
-    because="the base is on yescrypt and this rule asks for SHA512, so passing it would weaken the image"
+    because="the base is on yescrypt and this rule asks for SHA512, so passing it would weaken the image outside FIPS"
 
+// The claim is gated and the module is not: `ssg-debian13-ds.xml` carries none
+// of these three numbers, measured 2026-09-09, so they name nothing on a deb
+// scan.
 family "fedora" {
     satisfies {
-        stig "CCI-000199" \
-            "CCI-000198"
-        anssi "BP28(R35)"
+        stig "SRG-OS-000076-GPOS-00044" \
+            "SRG-OS-000075-GPOS-00043" \
+            "SRG-OS-000480-GPOS-00228"
     }
 }
