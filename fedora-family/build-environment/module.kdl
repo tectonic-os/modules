@@ -1,4 +1,4 @@
-description "dnf5 as the build environment every Fedora layer installs through, and the root filesystem work that closes it"
+description "dnf as the build environment every Fedora-family layer installs through, and the root filesystem work that closes it"
 
 supports "fedora"
 

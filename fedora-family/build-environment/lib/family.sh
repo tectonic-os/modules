@@ -1,11 +1,13 @@
 #!/bin/bash
 
+# `dnf` is dnf5 on Fedora and dnf4 on CentOS Stream 10, and both take these arguments.
+# COPR and `addrepo` below are dnf5's, so Fedora's alone.
 install_packages() {
 	local args=()
 	if [ -n "${TECT_ENABLE_REPO:-}" ]; then
 		args+=(--enablerepo="$TECT_ENABLE_REPO")
 	fi
-	dnf5 install -y "${args[@]}" "$@"
+	dnf install -y "${args[@]}" "$@"
 }
 
 install_groups() {
@@ -13,7 +15,7 @@ install_groups() {
 	if [ -n "${TECT_ENABLE_REPO:-}" ]; then
 		args+=(--enablerepo="$TECT_ENABLE_REPO")
 	fi
-	dnf5 group install -y "${args[@]}" "$@"
+	dnf group install -y "${args[@]}" "$@"
 }
 
 enable_copr() {
