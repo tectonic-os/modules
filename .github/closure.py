@@ -20,6 +20,8 @@ knows which. Requirements come out before the module that needs them.
 # leg that happens to name it. Measured 2026-09-05: a `changed` leg naming one
 # unrelated module scaffolded an image whose seeded `bootc-base` had nothing
 # providing `container-runtime`.
+# `rhel` is absent on purpose: only its Rocky row requires `bootc-base`, and the
+# hardening leg closes over `rhel` on cs10, which is a bootc image already.
 SEEDED = {"debian": ("bootc-base",), "ubuntu": ("bootc-base",)}
 
 import re

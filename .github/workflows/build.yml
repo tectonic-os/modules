@@ -87,6 +87,41 @@ jobs:
             printf 'include=%s\n' "$(jq -c -s add <<< "${always}${deb}")" >> "$GITHUB_OUTPUT"
           fi
 
+  # Every leg lints the repository it scaffolds, and that lint prunes the
+  # `modules/.remote` the collection is imported into, so the collection's own
+  # shell is linted here or nowhere. SC1090 and SC1091 are what a consumer's
+  # `.shellcheckrc` disables: the helpers are sourced from /ctx/lib, which
+  # exists only inside a build.
+  lint:
+    name: Lint the collection's shell
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+      - name: Install shfmt
+        env:
+          SHFMT_VERSION: "3.13.1"
+        run: |
+          sudo curl -fsSL -o /usr/local/bin/shfmt \
+            "https://github.com/mvdan/sh/releases/download/v${SHFMT_VERSION}/shfmt_v${SHFMT_VERSION}_linux_amd64"
+          sudo chmod +x /usr/local/bin/shfmt
+
+      - name: Lint
+        run: |
+          set -euo pipefail
+          mapfile -t scripts < <(find . -path ./.git -prune -o -name '*.sh' -type f -print)
+          mapfile -t repos < <(find . -path ./.git -prune -o -name repo -type f -print)
+          check=(shellcheck -s bash -e SC1090 -e SC1091)
+          "${check[@]}" "${scripts[@]}"
+          # `REPO_ID` is a `repo` file's interface: the helper and the emitter
+          # read it, and shellcheck sees neither.
+          "${check[@]}" -e SC2034 "${repos[@]}"
+          shfmt -i 4 -ci -bn -sr -d "${scripts[@]}" "${repos[@]}"
+          echo "::notice::${#scripts[@]} scripts and ${#repos[@]} repo files are clean"
+
   # Deliberately not an `image` in the matrix below: it shares none of that
   # job's steps — no tool, no scaffold, no import, no build — so threading it
   # through them would mean a condition on every one of them.
@@ -152,7 +187,11 @@ jobs:
 
   collection:
     name: ${{ matrix.image }} ${{ matrix.family }}
-    needs: legs
+    # The two jobs that fail in a minute gate the ones that fail in thirty: a
+    # bad package name or an unformatted script starts no build. The builds do
+    # not gate each other, and `fail-fast` stays off, so a registry flake on
+    # one leg costs that leg alone.
+    needs: [legs, lint, packages]
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -272,11 +311,9 @@ jobs:
             bootc-base)
               # One family set turns a plain container image into a bootc one,
               # and which directory holds it is the family's answer.
-              case "$FAMILY" in
-                rhel) set -- rhel-family ;;
-                *) set -- deb-family ;;
-              esac
-              find "$1" -mindepth 2 -name module.kdl -printf '%h\n' \
+              dir=deb-family
+              [ "$FAMILY" = rhel ] && dir=rhel-family
+              find "$dir" -mindepth 2 -name module.kdl -printf '%h\n' \
                 | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
             hardening)

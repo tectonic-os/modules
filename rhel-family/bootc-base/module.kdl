@@ -22,13 +22,8 @@ provides-file "/usr/sbin/sshd"
 
 requires "build-environment"
 
-// Deliberately not `provides "initramfs-generation"`: dracut runs in this
-// module's `finalize.sh`, hooks run in build order, so a module requiring the
-// capability would have its hook run after the initramfs was built.
-//
-// Nor `provides "rechunking"`, which CI reads off the base row and never off a
-// module. `rpm-ostree` is installed below all the same, so a row for a base
-// this set has already turned into a bootc image can declare it.
+// Not `initramfs-generation`: a dependent's hook would run after `finalize.sh`
+// built it. Not `rechunking`: CI reads that off the base row alone.
 
 // Every part is packaged, so this module pins nothing: Rocky's repos carry
 // `bootc` and `bootupd`, which is what the deb family has to build from source
