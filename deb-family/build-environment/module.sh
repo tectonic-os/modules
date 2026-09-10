@@ -11,28 +11,28 @@
 # module, and `provides "build-environment"` is what guarantees that. `debian:*`
 # ships no such file and the guard is what makes this one module for both.
 if [ -f /etc/dpkg/dpkg.cfg.d/excludes ]; then
-	rm -f /etc/dpkg/dpkg.cfg.d/excludes
-	# The state directories and the update are `install_packages`, which cannot
-	# be called here: it has no `--reinstall`. A base ships no package lists, so
-	# without the update apt can download nothing and reinstalls nothing.
-	mkdir -p /var/lib/apt/lists/partial /var/cache/apt/archives/partial /var/log/apt
-	DEBIAN_FRONTEND=noninteractive apt-get update
-	# shellcheck disable=SC2046 # one package name per line is the point
-	DEBIAN_FRONTEND=noninteractive apt-get install --reinstall -y \
-		$(dpkg-query -W -f '${binary:Package}\n')
-	# The repair fails silently. `apt-get install --reinstall` prints
-	# `Reinstallation of <pkg> is not possible, it cannot be downloaded` per
-	# package and exits 0, so an image with every path-exclude still in place
-	# builds green. Measured 2026-09-08 on `ubuntu:26.04`: man1 0 -> 0 without
-	# the update above, 0 -> 459 with it.
-	compgen -G '/usr/share/man/man1/*' >/dev/null || {
-		echo "build-environment: the path-exclude repair restored no man pages" >&2
-		exit 1
-	}
+    rm -f /etc/dpkg/dpkg.cfg.d/excludes
+    # The state directories and the update are `install_packages`, which cannot
+    # be called here: it has no `--reinstall`. A base ships no package lists, so
+    # without the update apt can download nothing and reinstalls nothing.
+    mkdir -p /var/lib/apt/lists/partial /var/cache/apt/archives/partial /var/log/apt
+    DEBIAN_FRONTEND=noninteractive apt-get update
+    # shellcheck disable=SC2046 # one package name per line is the point
+    DEBIAN_FRONTEND=noninteractive apt-get install --reinstall -y \
+        $(dpkg-query -W -f '${binary:Package}\n')
+    # The repair fails silently. `apt-get install --reinstall` prints
+    # `Reinstallation of <pkg> is not possible, it cannot be downloaded` per
+    # package and exits 0, so an image with every path-exclude still in place
+    # builds green. Measured 2026-09-08 on `ubuntu:26.04`: man1 0 -> 0 without
+    # the update above, 0 -> 459 with it.
+    compgen -G '/usr/share/man/man1/*' > /dev/null || {
+        echo "build-environment: the path-exclude repair restored no man pages" >&2
+        exit 1
+    }
 fi
 
 if [ -e /usr/sbin/policy-rc.d ]; then
-	mv /usr/sbin/policy-rc.d /usr/sbin/policy-rc.d.bak
+    mv /usr/sbin/policy-rc.d /usr/sbin/policy-rc.d.bak
 fi
-printf '#!/bin/sh\nexit 101\n' >/usr/sbin/policy-rc.d
+printf '#!/bin/sh\nexit 101\n' > /usr/sbin/policy-rc.d
 chmod +x /usr/sbin/policy-rc.d

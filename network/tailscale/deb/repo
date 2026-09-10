@@ -7,5 +7,5 @@ source /ctx/lib/family.sh
 # why this is one `deb/repo` rather than a `debian/` and an `ubuntu/` one.
 . /etc/os-release
 add_repo "tailscale" \
-	"https://pkgs.tailscale.com/stable/${ID}" "$VERSION_CODENAME" "main" \
-	"https://pkgs.tailscale.com/stable/${ID}/${VERSION_CODENAME}.noarmor.gpg"
+    "https://pkgs.tailscale.com/stable/${ID}" "$VERSION_CODENAME" "main" \
+    "https://pkgs.tailscale.com/stable/${ID}/${VERSION_CODENAME}.noarmor.gpg"

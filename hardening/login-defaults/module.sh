@@ -2,8 +2,8 @@
 # ENCRYPT_METHOD is deliberately untouched; the base is on yescrypt and the
 # benchmark still asks for the weaker SHA512.
 set_login_def() {
-	sed -i "/^[#[:space:]]*$1\b/d" /etc/login.defs
-	printf '%s\t%s\n' "$1" "$2" >> /etc/login.defs
+    sed -i "/^[#[:space:]]*$1\b/d" /etc/login.defs
+    printf '%s\t%s\n' "$1" "$2" >> /etc/login.defs
 }
 
 set_login_def PASS_MAX_DAYS 60

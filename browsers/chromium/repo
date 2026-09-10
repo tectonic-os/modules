@@ -6,7 +6,7 @@
 # everything, and the next `apt upgrade` takes the machine to unstable. So the
 # suite goes in at priority 1 -- present, never preferred -- and chromium's
 # own binary packages are the only ones lifted back above forky's.
-cat > /etc/apt/sources.list.d/debian-sid.sources <<'EOF'
+cat > /etc/apt/sources.list.d/debian-sid.sources << 'EOF'
 Types: deb
 URIs: http://deb.debian.org/debian
 Suites: sid
@@ -14,7 +14,7 @@ Components: main
 Signed-By: /usr/share/keyrings/debian-archive-keyring.pgp
 EOF
 
-cat > /etc/apt/preferences.d/debian-sid <<'EOF'
+cat > /etc/apt/preferences.d/debian-sid << 'EOF'
 Package: *
 Pin: release n=sid
 Pin-Priority: 1

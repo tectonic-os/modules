@@ -12,11 +12,11 @@ kver="$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n')"
 # check and fail later on `cp /boot/vmlinuz-` instead — which is the confusing
 # failure this guard exists to replace.
 if [ -z "$kver" ] || [ "$(printf '%s\n' "$kver" | wc -l)" != 1 ]; then
-	echo "bootc wants exactly one kernel; /usr/lib/modules has: ${kver}" >&2
-	exit 1
+    echo "bootc wants exactly one kernel; /usr/lib/modules has: ${kver}" >&2
+    exit 1
 fi
-[ -f "/usr/lib/modules/${kver}/vmlinuz" ] ||
-	cp "/boot/vmlinuz-${kver}" "/usr/lib/modules/${kver}/vmlinuz"
+[ -f "/usr/lib/modules/${kver}/vmlinuz" ] \
+    || cp "/boot/vmlinuz-${kver}" "/usr/lib/modules/${kver}/vmlinuz"
 depmod "$kver"
 initramfs="/usr/lib/modules/${kver}/initramfs.img"
 dracut --force --kver "$kver" "$initramfs"
@@ -29,11 +29,11 @@ dracut --force --kver "$kver" "$initramfs"
 # failed — so a piped form of this check fails loudest when it passes.
 listing="$(lsinitrd "$initramfs")"
 for path in usr/lib/bootc/initramfs-setup \
-	usr/lib/systemd/system/bootc-root-setup.service; do
-	if ! grep -q "[ /]${path}\$" <<<"$listing"; then
-		echo "the initramfs carries no ${path}, so it cannot mount a deployment" >&2
-		exit 1
-	fi
+    usr/lib/systemd/system/bootc-root-setup.service; do
+    if ! grep -q "[ /]${path}\$" <<< "$listing"; then
+        echo "the initramfs carries no ${path}, so it cannot mount a deployment" >&2
+        exit 1
+    fi
 done
 
 # ---- package state out of /var ----
@@ -53,21 +53,21 @@ done
 # either way, so there is nothing to relocate.
 mkdir -p /usr/lib/sysimage
 for pair in \
-	dpkg:/var/lib/dpkg \
-	pam:/var/lib/pam \
-	ucf:/var/lib/ucf \
-	sgml-base:/var/lib/sgml-base \
-	xml-core:/var/lib/xml-core \
-	deb-systemd-helper-enabled:/var/lib/systemd/deb-systemd-helper-enabled \
-	deb-systemd-user-helper-enabled:/var/lib/systemd/deb-systemd-user-helper-enabled; do
-	from="${pair#*:}"
-	to="/usr/lib/sysimage/${pair%%:*}"
-	[ -L "$from" ] && continue
-	# A directory no package has created yet still gets its link, so the first
-	# install in a derived build writes to the relocated copy.
-	if [ -d "$from" ]; then mv "$from" "$to"; else mkdir -p "$to"; fi
-	mkdir -p "$(dirname "$from")"
-	ln -sfT "$to" "$from"
+    dpkg:/var/lib/dpkg \
+    pam:/var/lib/pam \
+    ucf:/var/lib/ucf \
+    sgml-base:/var/lib/sgml-base \
+    xml-core:/var/lib/xml-core \
+    deb-systemd-helper-enabled:/var/lib/systemd/deb-systemd-helper-enabled \
+    deb-systemd-user-helper-enabled:/var/lib/systemd/deb-systemd-user-helper-enabled; do
+    from="${pair#*:}"
+    to="/usr/lib/sysimage/${pair%%:*}"
+    [ -L "$from" ] && continue
+    # A directory no package has created yet still gets its link, so the first
+    # install in a derived build writes to the relocated copy.
+    if [ -d "$from" ]; then mv "$from" "$to"; else mkdir -p "$to"; fi
+    mkdir -p "$(dirname "$from")"
+    ln -sfT "$to" "$from"
 done
 # The link is made here as well as in tmpfiles.d because every RUN layer of a
 # derived build executes before systemd-tmpfiles ever does.
@@ -77,13 +77,13 @@ done
 # 0**, so the count is the only thing that says the relocation worked.
 packages="$(dpkg-query -W -f '.' | wc -c)"
 if [ "$packages" -eq 0 ]; then
-	echo "the relocated dpkg admindir answers for no packages at all" >&2
-	exit 1
+    echo "the relocated dpkg admindir answers for no packages at all" >&2
+    exit 1
 fi
 echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 
 # ---- what a build must not bake in ----
-: >/etc/machine-id
+: > /etc/machine-id
 # Both bases arrive with a couple of dozen directories under /run, created by
 # package scripts at unpack time and recreated at boot by a tmpfiles rule or by
 # the service that wants them — `bootc container lint` reports the lot as
@@ -96,7 +96,7 @@ echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 # busy` on them, and neither is committed to a layer anyway. A plain
 # `rm -rf /run/*` therefore fails the build rather than emptying it.
 find /run -mindepth 1 -maxdepth 1 ! -name secrets ! -name .containerenv \
-	-exec rm -rf {} +
+    -exec rm -rf {} +
 
 # `ubuntu:*` ships a uid 1000 account in the `sudo` group, locked, owning no
 # file anywhere outside the /home this hook deletes below, and declared by no
@@ -104,8 +104,8 @@ find /run -mindepth 1 -maxdepth 1 ! -name secrets ! -name .containerenv \
 # where a login comes from; `login-access` is. So it goes rather than being
 # left for somebody to find. `debian:*` ships no such account, which is what
 # the guard is for.
-if getent passwd ubuntu >/dev/null; then
-	userdel ubuntu
+if getent passwd ubuntu > /dev/null; then
+    userdel ubuntu
 fi
 # Debian's `dbus.conf` declares /var/lib/dbus/machine-id, so the tool's /var
 # pass skips it *and* leaves the file on disk — and it declares it with `L`
@@ -150,9 +150,9 @@ rm -f /etc/systemd/system/multi-user.target.wants/ssh.service
 # with a `COPY`, and `tmpfiles.d/00-resolv-conf.conf` the second at boot.
 rm -f /etc/dpkg/dpkg.cfg.d/docker-apt-speedup
 rm -f /etc/apt/apt.conf.d/docker-clean \
-	/etc/apt/apt.conf.d/docker-gzip-indexes \
-	/etc/apt/apt.conf.d/docker-no-languages \
-	/etc/apt/apt.conf.d/docker-autoremove-suggests
+    /etc/apt/apt.conf.d/docker-gzip-indexes \
+    /etc/apt/apt.conf.d/docker-no-languages \
+    /etc/apt/apt.conf.d/docker-autoremove-suggests
 
 # ---- the ostree-shaped root ----
 # /opt is not here: the tool's own finalize relocates it and restores the

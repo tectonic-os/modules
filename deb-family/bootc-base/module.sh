@@ -11,9 +11,9 @@ source /ctx/lib/fetch-helpers.sh
 NEEDS_OSTREE=2025.3
 HAS_OSTREE="$(dpkg-query -W -f '${Version}' libostree-1-1)"
 if ! dpkg --compare-versions "$HAS_OSTREE" ge "$NEEDS_OSTREE"; then
-	echo "this base carries libostree ${HAS_OSTREE}, and bootc" \
-		"${ASSET_BOOTC_VERSION} needs >= ${NEEDS_OSTREE}" >&2
-	exit 1
+    echo "this base carries libostree ${HAS_OSTREE}, and bootc" \
+        "${ASSET_BOOTC_VERSION} needs >= ${NEEDS_OSTREE}" >&2
+    exit 1
 fi
 
 # Purged again at the end of this layer, which is why the whole build lives in
@@ -22,8 +22,8 @@ fi
 # leaves its packages marked manual — autoremove takes only what nothing
 # manually installed still depends on.
 BUILD_DEPS=(
-	build-essential rustc cargo
-	libostree-dev libzstd-dev libssl-dev pkgconf go-md2man
+    build-essential rustc cargo
+    libostree-dev libzstd-dev libssl-dev pkgconf go-md2man
 )
 install_packages "${BUILD_DEPS[@]}"
 
@@ -31,9 +31,9 @@ install_packages "${BUILD_DEPS[@]}"
 # only one would leave cargo resolving against a vendor tree for a different
 # version, which it would answer by reaching crates.io rather than by failing.
 if [ "$ASSET_BOOTC_VERSION" != "$ASSET_BOOTC_VENDOR_VERSION" ]; then
-	echo "bootc is pinned at ${ASSET_BOOTC_VERSION} and its vendor tarball at" \
-		"${ASSET_BOOTC_VENDOR_VERSION}; both pins move together" >&2
-	exit 1
+    echo "bootc is pinned at ${ASSET_BOOTC_VERSION} and its vendor tarball at" \
+        "${ASSET_BOOTC_VENDOR_VERSION}; both pins move together" >&2
+    exit 1
 fi
 
 src=/tmp/bootc
@@ -44,7 +44,7 @@ cd "${src}/bootc-${ASSET_BOOTC_VERSION}" || exit
 # the source ships but does not apply, so cargo only stops reaching crates.io
 # once the two are joined.
 fetch_extract "$ASSET_BOOTC_VENDOR_URL" "$ASSET_BOOTC_VENDOR_SHA256" .
-cat .cargo/vendor-config.toml >>.cargo/config.toml
+cat .cargo/vendor-config.toml >> .cargo/config.toml
 
 # The vendored sources are an arrangement, not a guarantee, so say so: offline
 # makes a missing or mismatched vendor tree a build failure rather than a
@@ -72,9 +72,9 @@ rm -rf "$src"
 # ---- bootupd, and the signed chain it installs ----
 # Same two pins, same reason, and the same check that they move together.
 if [ "$ASSET_BOOTUPD_VERSION" != "$ASSET_BOOTUPD_VENDOR_VERSION" ]; then
-	echo "bootupd is pinned at ${ASSET_BOOTUPD_VERSION} and its vendor tarball" \
-		"at ${ASSET_BOOTUPD_VENDOR_VERSION}; both pins move together" >&2
-	exit 1
+    echo "bootupd is pinned at ${ASSET_BOOTUPD_VERSION} and its vendor tarball" \
+        "at ${ASSET_BOOTUPD_VENDOR_VERSION}; both pins move together" >&2
+    exit 1
 fi
 
 src=/tmp/bootupd
@@ -86,7 +86,7 @@ fetch_extract "$ASSET_BOOTUPD_VENDOR_URL" "$ASSET_BOOTUPD_VENDOR_SHA256" .
 # at it and bootupd's carries only the tree, so the redirect is written here.
 # Same effect, and the same failure if it is missing: cargo reaches the network.
 mkdir -p .cargo
-cat >>.cargo/config.toml <<'CARGO'
+cat >> .cargo/config.toml << 'CARGO'
 [source.crates-io]
 replace-with = "vendored-sources"
 
@@ -144,13 +144,13 @@ install -D -m 0644 /usr/lib/shim/shimx64.efi.signed "${shim_dir}/BOOT/BOOTX64.EF
 # write an NVRAM entry from `BOOTX64.CSV`, and the removable path boots without
 # one, which is the path `--generic-image` leaves as the only one anyway.
 if [ -f /usr/lib/shim/fbx64.efi.signed ]; then
-	install -D -m 0644 /usr/lib/shim/fbx64.efi.signed "${shim_dir}/BOOT/fbx64.efi"
+    install -D -m 0644 /usr/lib/shim/fbx64.efi.signed "${shim_dir}/BOOT/fbx64.efi"
 fi
 if [ -f /usr/lib/shim/mmx64.efi.signed ]; then
-	install -D -m 0644 /usr/lib/shim/mmx64.efi.signed "${shim_dir}/${vendor}/mmx64.efi"
+    install -D -m 0644 /usr/lib/shim/mmx64.efi.signed "${shim_dir}/${vendor}/mmx64.efi"
 fi
 install -D -m 0644 /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed \
-	"${grub_dir}/${vendor}/grubx64.efi"
+    "${grub_dir}/${vendor}/grubx64.efi"
 
 # The removable path has to boot on its own, and `--generic-image` is what
 # makes that the only path: bootc passes it to skip the `efibootmgr` call, so
@@ -161,7 +161,7 @@ install -D -m 0644 /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed \
 # beside shim is what fixes it; `BOOTX64.CSV` is what the fallback wants for
 # the firmware that does keep NVRAM entries, and both cost a few hundred KB.
 install -D -m 0644 /usr/lib/grub/x86_64-efi-signed/grubx64.efi.signed \
-	"${shim_dir}/BOOT/grubx64.efi"
+    "${shim_dir}/BOOT/grubx64.efi"
 install -D -m 0644 /usr/lib/shim/BOOTX64.CSV "${shim_dir}/${vendor}/BOOTX64.CSV"
 
 # Upstream's own stub, taken from the pinned source rather than written here.
