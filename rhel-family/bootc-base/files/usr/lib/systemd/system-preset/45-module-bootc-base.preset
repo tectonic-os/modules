@@ -1,0 +1,5 @@
+# EL's own `90-default.preset` enables `sshd.service`, so an image from this
+# base would listen on the network because a package said so. `login-access` is
+# the module that decides it, and its preset sorts after this one.
+disable sshd.service
+disable sshd.socket

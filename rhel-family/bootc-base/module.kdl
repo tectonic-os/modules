@@ -1,0 +1,53 @@
+description "Everything a Rocky container image is missing before it is a bootc image: systemd, a kernel, dracut, ostree, bootc, bootupd, an initramfs that carries them, and an ostree-shaped root filesystem"
+
+supports "rhel"
+
+provides "bootc-base"
+
+// SELinux policy is a package here, where the deb family compiles one. A
+// module shipping `selinux/` policy is ordered after this one by `requires`.
+provides "selinux-policy"
+
+// bootc opens its composefs image store by running `podman images` in it, so
+// the installed machine needs a runtime and not just the builder. EL packages
+// both, so this module carries them instead of a second module.
+provides "container-runtime"
+
+provides-file "/usr/bin/bootc"
+provides-file "/usr/bin/bootupctl"
+provides-file "/usr/bin/podman"
+provides-file "/usr/bin/crun"
+// Installed here and enabled by `login-access`, which requires this path.
+provides-file "/usr/sbin/sshd"
+
+requires "build-environment"
+
+// Deliberately not `provides "initramfs-generation"`: dracut runs in this
+// module's `finalize.sh`, hooks run in build order, so a module requiring the
+// capability would have its hook run after the initramfs was built.
+//
+// Nor `provides "rechunking"`, which CI reads off the base row and never off a
+// module. `rpm-ostree` is installed below all the same, so a row for a base
+// this set has already turned into a bootc image can declare it.
+
+// Every part is packaged, so this module pins nothing: Rocky's repos carry
+// `bootc` and `bootupd`, which is what the deb family has to build from source
+// against two hashed tarballs apiece. Measured 2026-09-11 on
+// `quay.io/rockylinux/rockylinux:10`: 137 of its 138 packages are signed by
+// `RPM-GPG-KEY-Rocky-10`, every repo sets `gpgcheck=1`, and the container
+// carries a working rpm database — which is the defect that stops a deb bootc
+// base being layered at all.
+//
+// `systemd` is on this list because the container image has none and `/sbin/init`
+// does not exist in it. `zstd` is what dracut compresses with, `curl` is what
+// the collection's own `fetch-helpers.sh` runs on, and `man-db` is what
+// `systemd-analyze verify` renders a unit's `Documentation=man:` through.
+packages "systemd" "systemd-udev" "kernel" "dracut" "ostree" "composefs" \
+    "bootc" "bootupd" "rpm-ostree" "skopeo" "podman" "crun" \
+    "selinux-policy-targeted" "policycoreutils" \
+    "NetworkManager" "openssh-server" "sudo" "iproute" \
+    "shim-x64" "grub2-efi-x64" "efibootmgr" \
+    "e2fsprogs" "xfsprogs" "dosfstools" "cryptsetup" "lvm2" \
+    "ca-certificates" "curl" "zstd" "less" "man-db"
+
+fragment position="after"

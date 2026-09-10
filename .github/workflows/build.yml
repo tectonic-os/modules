@@ -71,6 +71,7 @@ jobs:
             {"image":"collection","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"bootc-base","family":"debian","base":"docker.io/library/debian:forky"},
             {"image":"bootc-base","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"},
+            {"image":"bootc-base","family":"rhel","base":"quay.io/rockylinux/rockylinux:10"},
             {"image":"hardening","family":"rhel","base":"quay.io/centos-bootc/centos-bootc:stream10"},
             {"image":"changed","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"changed","family":"debian","base":"docker.io/library/debian:forky"},
@@ -269,7 +270,13 @@ jobs:
                 -printf '%h\n' | sed 's|^\./||' | sort > "$NAMES"
               ;;
             bootc-base)
-              find deb-family -mindepth 2 -name module.kdl -printf '%h\n' \
+              # One family set turns a plain container image into a bootc one,
+              # and which directory holds it is the family's answer.
+              case "$FAMILY" in
+                rhel) set -- rhel-family ;;
+                *) set -- deb-family ;;
+              esac
+              find "$1" -mindepth 2 -name module.kdl -printf '%h\n' \
                 | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
             hardening)
