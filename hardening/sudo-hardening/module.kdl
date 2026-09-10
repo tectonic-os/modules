@@ -1,6 +1,6 @@
 description "sudo policy hardening: own pty, own logfile, short credential cache"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 mode "/etc/sudoers.d/99-hardening" "0440"
 

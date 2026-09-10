@@ -1,6 +1,6 @@
 description "Login defaults: password ageing, length, failure delay and umask"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 // `module.sh` leaves ENCRYPT_METHOD alone because the base is on yescrypt and
 // the rule asks for SHA512, which is weaker. Declared here so that SSG's own
@@ -15,7 +15,7 @@ refuses "set_password_hashing_algorithm_logindefs" \
 // The claim is gated and the module is not: `ssg-debian13-ds.xml` carries none
 // of these three numbers, measured 2026-09-09, so they name nothing on a deb
 // scan.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         stig "SRG-OS-000076-GPOS-00044" \
             "SRG-OS-000075-GPOS-00043" \

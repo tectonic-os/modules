@@ -1,13 +1,13 @@
 description "Account expiry: a password 30 days expired disables the account"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 // `Req-8.1.4` is carried by no rule in `ssg-debian13-ds.xml`, measured
 // 2026-09-07, so the claim cannot be made where it cannot be read. It *is* in
 // `ssg-ubuntu2404-ds.xml`, on `account_disable_post_pw_expiration`, which is
 // this `INACTIVE` exactly -- add ubuntu to the gate once the deb hardening leg
 // has measured it passing, and not on the strength of the number being there.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         pci-dss "Req-8.1.4"
     }

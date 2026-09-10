@@ -1,6 +1,6 @@
 description "Login policy: faillock lockout, password quality, rescue sulogin"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 // On a deb family the two config files this module ships are inert until
 // something puts the modules that read them in the stack, which is what
@@ -33,7 +33,7 @@ family "debian" "ubuntu" {
 // The claim is gated and the module is not: `ssg-debian13-ds.xml` carries no
 // `AC-7.1(ii)`, and two of the three SRG numbers reach other rules there --
 // measured 2026-09-09.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         stig "SRG-OS-000071-GPOS-00039" \
             "SRG-OS-000072-GPOS-00040" \

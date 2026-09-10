@@ -1,6 +1,6 @@
 description "su is for wheel: pam_wheel refuses everyone else"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 // Fedora alone, because `SRG-OS-000312-GPOS-00123` names a different rule on
 // the deb content and the claim would measure something this module does not
@@ -10,7 +10,7 @@ supports "fedora" "debian" "ubuntu"
 // the first rule in document order carrying the number, so the deb copy of this
 // claim would have passed -- on the base's AppArmor, having measured nothing
 // this module did.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         stig "SRG-OS-000312-GPOS-00123"
     }

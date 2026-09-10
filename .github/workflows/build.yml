@@ -71,7 +71,7 @@ jobs:
             {"image":"collection","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"bootc-base","family":"debian","base":"docker.io/library/debian:forky"},
             {"image":"bootc-base","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"},
-            {"image":"hardening","family":"fedora","base":"quay.io/centos-bootc/centos-bootc:stream10"},
+            {"image":"hardening","family":"rhel","base":"quay.io/centos-bootc/centos-bootc:stream10"},
             {"image":"changed","family":"fedora","base":"quay.io/fedora/fedora-bootc:44"},
             {"image":"changed","family":"debian","base":"docker.io/library/debian:forky"},
             {"image":"changed","family":"ubuntu","base":"docker.io/library/ubuntu:26.04"}
@@ -273,11 +273,11 @@ jobs:
                 | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;
             hardening)
-              # hardened_malloc comes out of a Fedora COPR, and this leg is CentOS Stream 10.
+              # A module that does not support `rhel` is skipped at import,
+              # which is how `hardened-malloc` and its Fedora COPR leave this leg.
               {
                 printf '%s\n' $HARDENING
-                find hardening -mindepth 2 -name module.kdl -printf '%h\n' \
-                  | grep -vx hardening/hardened-malloc
+                find hardening -mindepth 2 -name module.kdl -printf '%h\n'
               } | sort -u \
                 | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
               ;;

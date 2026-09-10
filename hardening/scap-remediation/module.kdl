@@ -1,6 +1,6 @@
 description "runs SSG's own remediation for the profile the image conforms to, leaving every rule a module claims or refuses alone"
 
-supports "fedora"
+supports "fedora" "rhel"
 
 // The capability is how `tect check` tells an image that declares `conforms`
 // and installs nothing to act on it. Nothing requires it: an image measured

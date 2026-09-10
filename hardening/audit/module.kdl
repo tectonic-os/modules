@@ -1,10 +1,10 @@
 description "auditd, with the audit rules and auditd.conf settings of the DISA STIG"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 requires "build-environment"
 
-family "fedora" {
+family "fedora" "rhel" {
     packages "audit"
 }
 
@@ -30,7 +30,7 @@ mode "/etc/audit/rules.d/setuid.rules" "0600"
 
 // Each number reaches the same rule on cs10 0.1.81 and 0.1.82 and Fedora 0.1.71
 // and 0.1.81. No deb content measures them.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         stig "SRG-OS-000057-GPOS-00027" \
             "SRG-OS-000004-GPOS-00004" \

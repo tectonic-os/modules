@@ -1,12 +1,12 @@
 description "Coredump lockdown: no storage, no size, no rlimit"
 
-supports "fedora" "debian" "ubuntu"
+supports "fedora" "rhel" "debian" "ubuntu"
 
 // Fedora's alone: `Req-3.2` is carried by no rule in `ssg-debian13-ds.xml` or
 // `ssg-ubuntu2404-ds.xml`, measured 2026-09-07. The module still does its work
 // on all three -- the files it ships are systemd's, not a family's -- and only
 // the claim is family-shaped, because a claim is a number in one datastream.
-family "fedora" {
+family "fedora" "rhel" {
     satisfies {
         pci-dss "Req-3.2"
     }
