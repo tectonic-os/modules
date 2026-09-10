@@ -1,0 +1,4 @@
+-a always,exit -F arch=b32 -F path=/etc/sudoers -F perm=wa -F key=actions
+-a always,exit -F arch=b64 -F path=/etc/sudoers -F perm=wa -F key=actions
+-a always,exit -F arch=b32 -F dir=/etc/sudoers.d/ -F perm=wa -F key=actions
+-a always,exit -F arch=b64 -F dir=/etc/sudoers.d/ -F perm=wa -F key=actions

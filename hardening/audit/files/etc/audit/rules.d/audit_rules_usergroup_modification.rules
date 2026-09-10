@@ -1,0 +1,10 @@
+-a always,exit -F arch=b32 -F path=/etc/group -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b64 -F path=/etc/group -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b32 -F path=/etc/gshadow -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b64 -F path=/etc/gshadow -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b32 -F path=/etc/security/opasswd -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b64 -F path=/etc/security/opasswd -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b32 -F path=/etc/passwd -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b64 -F path=/etc/passwd -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b32 -F path=/etc/shadow -F perm=wa -F key=audit_rules_usergroup_modification
+-a always,exit -F arch=b64 -F path=/etc/shadow -F perm=wa -F key=audit_rules_usergroup_modification

@@ -1,0 +1,46 @@
+description "auditd, with the audit rules and auditd.conf settings of the DISA STIG"
+
+supports "fedora" "debian" "ubuntu"
+
+requires "build-environment"
+
+family "fedora" {
+    packages "audit"
+}
+
+family "debian" "ubuntu" {
+    packages "auditd"
+}
+
+// `-f 2` halts the machine on an audit failure. `privileged.rules` is per
+// family because the kernel refuses a watch whose directory does not exist.
+mode "/etc/audit/rules.d/access.rules" "0600"
+mode "/etc/audit/rules.d/actions.rules" "0600"
+mode "/etc/audit/rules.d/audit.rules" "0600"
+mode "/etc/audit/rules.d/audit_rules_usergroup_modification.rules" "0600"
+mode "/etc/audit/rules.d/delete.rules" "0600"
+mode "/etc/audit/rules.d/export.rules" "0600"
+mode "/etc/audit/rules.d/immutable.rules" "0600"
+mode "/etc/audit/rules.d/logins.rules" "0600"
+mode "/etc/audit/rules.d/modules.rules" "0600"
+mode "/etc/audit/rules.d/perm_mod.rules" "0600"
+mode "/etc/audit/rules.d/privileged.rules" "0600"
+mode "/etc/audit/rules.d/setgid.rules" "0600"
+mode "/etc/audit/rules.d/setuid.rules" "0600"
+
+// Each number reaches the same rule on cs10 0.1.81 and 0.1.82 and Fedora 0.1.71
+// and 0.1.81. No deb content measures them.
+family "fedora" {
+    satisfies {
+        stig "SRG-OS-000057-GPOS-00027" \
+            "SRG-OS-000004-GPOS-00004" \
+            "SRG-OS-000326-GPOS-00126" \
+            "SRG-OS-000274-GPOS-00104" \
+            "SRG-OS-000064-GPOS-00033" \
+            "SRG-OS-000474-GPOS-00219" \
+            "SRG-OS-000463-GPOS-00207" \
+            "SRG-OS-000465-GPOS-00209" \
+            "SRG-OS-000467-GPOS-00211" \
+            "SRG-OS-000461-GPOS-00205"
+    }
+}

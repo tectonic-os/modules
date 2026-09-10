@@ -1,0 +1,4 @@
+-a always,exit -F arch=b32 -F path=/var/log/faillock -F perm=wa -F key=logins
+-a always,exit -F arch=b64 -F path=/var/log/faillock -F perm=wa -F key=logins
+-a always,exit -F arch=b32 -F path=/var/log/lastlog -F perm=wa -F key=logins
+-a always,exit -F arch=b64 -F path=/var/log/lastlog -F perm=wa -F key=logins
