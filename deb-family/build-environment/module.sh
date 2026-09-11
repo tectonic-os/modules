@@ -1,3 +1,15 @@
+# The archives' own mirrors crawl from a CI runner, so the build fetches through
+# Azure's, which GitHub's runners use, and retries a stalled connection.
+# `finalize.sh` puts back the base's sources, so the image ships them.
+mkdir -p /etc/apt/tect-build
+for sources in /etc/apt/sources.list.d/ubuntu.sources /etc/apt/sources.list.d/debian.sources; do
+    [ -f "$sources" ] || continue
+    cp -p "$sources" /etc/apt/tect-build/
+    sed -i -e 's|http://archive.ubuntu.com/|http://azure.archive.ubuntu.com/|' \
+        -e 's|http://deb.debian.org/|http://debian-archive.trafficmanager.net/|' "$sources"
+done
+printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\n' > /etc/apt/apt.conf.d/80-tect-build
+
 # `ubuntu:*` ships `/etc/dpkg/dpkg.cfg.d/excludes`, which `path-exclude`s every
 # man page, every `/usr/share/doc` file but `copyright` and `changelog`, and the
 # locale catalogues. A `path-exclude` applies at *unpack* time and is inherited,
