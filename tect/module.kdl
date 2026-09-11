@@ -2,8 +2,8 @@ description "tect itself, so a booted image answers for its own build with no re
 
 supports "fedora"
 
-provides-file "/usr/bin/tect"
-provides-file "/usr/share/tectonic/assets"
+provides "tect"
+provides "tect-assets" file="/usr/share/tectonic/assets"
 
 asset "tect" {
     pin {

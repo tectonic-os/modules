@@ -40,9 +40,9 @@ on:
 #               a module whose requirement nothing in the image provides is an
 #               unmet-requires error, so the closure is walked from the
 #               providers rather than filtered from the diff. One per family,
-#               because a widened module's `requires`, `after` and
-#               `requires-file` can be satisfiable on one family and dangling
-#               on another, and building nothing makes three of them cheap.
+#               because a widened module's `requires` and `after` can be
+#               satisfiable on one family and dangling on another, and
+#               building nothing makes three of them cheap.
 #   packages    every `packages` batch a family declares, resolved by apt in a
 #               container of that family and nothing else. It builds no image,
 #               so it costs seconds, and it fails on the one defect a widened

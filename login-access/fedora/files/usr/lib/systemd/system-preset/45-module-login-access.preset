@@ -1,6 +1,6 @@
 # The Fedora half of this module's one line. The daemon is the base's —
 # `openssh-server` is in `quay.io/fedora/fedora-bootc:44` and
-# `assets/bases.kdl` says so with `provides-file "/usr/sbin/sshd"` — and the
+# `assets/bases.kdl` says so with `provides "ssh"` — and the
 # enablement is this module's, the same split the `deb/` copy describes.
 #
 # The unit is `sshd.service` here and `ssh.service` on the deb families, which

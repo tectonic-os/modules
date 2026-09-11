@@ -13,12 +13,9 @@ provides "selinux-policy"
 // both, so this module carries them instead of a second module.
 provides "container-runtime"
 
-provides-file "/usr/bin/bootc"
-provides-file "/usr/bin/bootupctl"
-provides-file "/usr/bin/podman"
-provides-file "/usr/bin/crun"
-// Installed here and enabled by `login-access`, which requires this path.
-provides-file "/usr/sbin/sshd"
+provides "bootc" "bootupctl" "podman" "crun"
+// Installed here and enabled by `login-access`, which requires it.
+provides "ssh"
 
 requires "build-environment"
 

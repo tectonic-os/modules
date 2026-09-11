@@ -3,8 +3,8 @@
 
 A leg that imports a subset of the collection cannot import a diff: a module
 whose `requires` nothing in the image provides is an unmet-requires error, so
-the set has to be closed over `requires` and `requires-file` against the
-providers this family actually has. Run from the collection root.
+the set has to be closed over `requires` against the providers this family
+actually has; a key provides `<kind>-key`. Run from the collection root.
 
     closure.py <family> <base> <name>...
     closure.py --split <family> <base> <name>...
@@ -30,8 +30,9 @@ import re
 import sys
 from pathlib import Path
 
-DECL = re.compile(r'^\s*(provides|requires)(?:-file)?\s')
-QUOTED = re.compile(r'"([^"]*)"')
+DECL = re.compile(r'^\s*(provides|requires)\s')
+# A property's value, `file="/usr/libexec/x"`, is not a name.
+QUOTED = re.compile(r'(?<!=)"([^"]*)"')
 ROW = re.compile(r'^base "([^"]+)"')
 
 
@@ -61,6 +62,8 @@ def read(path):
             continue
         if line.startswith("supports "):
             supports.update(names)
+        elif line.startswith("key "):
+            provides.add(names[0] + "-key")
         elif DECL.match(line):
             which = provides if line.lstrip().startswith("provides") else requires
             which.update(names)

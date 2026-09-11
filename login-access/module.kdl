@@ -20,10 +20,10 @@ supports "fedora" "debian" "ubuntu"
 //
 // Fedora arrived on 2026-09-07 and cost exactly that second file. The module
 // had been refused there since it was written, and not for anything about
-// Fedora: `assets/bases.kdl` gave `quay.io/fedora/fedora-bootc:44` no
-// `provides-file` at all, so the line below was unsatisfied on a base that
-// ships the binary. The row was the defect and the row was fixed.
-requires-file "/usr/sbin/sshd"
+// Fedora: `assets/bases.kdl` gave `quay.io/fedora/fedora-bootc:44` no `ssh`
+// claim at all, so the line below was unsatisfied on a base that ships the
+// binary. The row was the defect and the row was fixed.
+requires "ssh"
 
 // Enabling the daemon without an authorized key leaves the network half
 // dormant: the daemon listens and nobody can answer it. This is the key that

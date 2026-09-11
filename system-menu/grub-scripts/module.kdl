@@ -3,4 +3,4 @@ description "The grub.cfg regeneration recipe, for when a new OS is installed be
 supports "fedora"
 
 requires "just"
-requires-file "/usr/libexec/grub2-os-prober-regen"
+requires "grub2-os-prober-regen"

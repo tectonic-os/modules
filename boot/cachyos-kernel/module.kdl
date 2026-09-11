@@ -3,9 +3,9 @@ description "CachyOS kernel and companions, with Secure Boot module signing"
 supports "fedora"
 
 provides "kernel-devel"
-provides-file "/usr/lib/kernel-build/kernel-package"
+provides "kernel-package" file="/usr/lib/kernel-build/kernel-package"
 
-provides-file "/usr/libexec/kernel-devel-helpers.sh" build-only=#true
+provides "kernel-devel-helpers" file="/usr/libexec/kernel-devel-helpers.sh" build-only=#true
 
 key "secureboot" {
     generator "openssl" profile="module-signing" bits=4096

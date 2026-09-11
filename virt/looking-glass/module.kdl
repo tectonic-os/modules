@@ -4,10 +4,9 @@ supports "fedora"
 
 requires "kernel-devel"
 requires "display-manager"
-requires-file "/usr/share/secureboot/sb_cert.der"
-requires-file "/usr/libexec/kernel-devel-helpers.sh"
+requires "secureboot-key" "kernel-devel-helpers"
 
-provides-file "/usr/bin/looking-glass-client"
+provides "looking-glass-client"
 
 arg "KERNEL"
 secret "mok_privkey"

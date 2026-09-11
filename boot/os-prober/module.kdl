@@ -2,4 +2,4 @@ description "GRUB dual boot discovery, so another installed OS shows up in the b
 
 supports "fedora"
 
-provides-file "/usr/libexec/grub2-os-prober-regen"
+provides "grub2-os-prober-regen" file="/usr/libexec/grub2-os-prober-regen"

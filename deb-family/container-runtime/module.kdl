@@ -28,8 +28,7 @@ requires "build-environment"
 // `crun` and not `runc`: it is what Fedora's base uses, it is what podman
 // defaults to on both families, and it is the smaller of the two. `crun-wasm`
 // rides along in the same package and is not asked for.
-provides-file "/usr/bin/podman"
-provides-file "/usr/bin/crun"
+provides "podman" "crun"
 
 // Measured on both bases the same day: `podman` 5.8.6 with `crun` 1.28 on
 // `debian:forky`, `podman` 5.7.0 with `crun` 1.21 on `ubuntu:26.04`.
