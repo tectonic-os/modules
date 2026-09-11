@@ -7,7 +7,8 @@ supports "fedora" "rhel" "debian" "ubuntu"
 // target. Two tmpfiles rules naming one path is not a collision — different
 // filenames, identical content, the second a no-op — and neither module can
 // drop it: the base needs it to boot with a resolver at all, and this module
-// needs it on Fedora where the base does not ship one.
+// needs it on Fedora where the base does not ship one. EL ships no
+// systemd-resolved, so the link would leave a `rhel` machine with no resolver.
 //
 // The NetworkManager drop-in is inert where NetworkManager is absent, which on
 // a deb image it is until `desktop/kde` installs it. That is exactly the image
