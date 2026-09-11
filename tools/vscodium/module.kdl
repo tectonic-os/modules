@@ -3,6 +3,7 @@ description "VSCodium, the telemetry-free VS Code build"
 supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
+requires "display-manager"
 
 // `fedora/module.sh` wraps codium to drop hardened-malloc's LD_PRELOAD. It reads
 // nothing hardened-malloc ships, so it needs no order against it.

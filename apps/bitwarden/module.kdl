@@ -3,3 +3,4 @@ description "Bitwarden password manager"
 supports "fedora" "debian" "ubuntu"
 
 requires "flatpak"
+requires "display-manager"

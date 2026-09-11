@@ -3,5 +3,6 @@ description "Firefox from Mozilla's own apt archive"
 supports "debian" "ubuntu"
 
 requires "build-environment"
+requires "display-manager"
 
 packages "firefox"

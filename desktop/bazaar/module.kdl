@@ -3,5 +3,6 @@ description "Bazaar, the Flatpak storefront"
 supports "fedora" "debian" "ubuntu"
 
 requires "flatpak"
+requires "display-manager"
 
 provides "bazaar"

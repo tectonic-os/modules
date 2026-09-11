@@ -2,7 +2,7 @@ description "KDE Plasma desktop and the application set it ships with"
 
 supports "fedora" "debian" "ubuntu"
 
-provides "plasma-desktop"
+provides "plasma-desktop" "display-manager"
 
 requires "build-environment"
 

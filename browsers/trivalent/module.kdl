@@ -3,6 +3,7 @@ description "Trivalent, secureblue's hardened Chromium fork"
 supports "fedora"
 
 requires "build-environment"
+requires "display-manager"
 requires "selinux-policy"
 
 // `trivalent-selinux`'s policy module requires `flatpak_home_t`, which
