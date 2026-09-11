@@ -1,0 +1,39 @@
+description "GNOME desktop and the application set it ships with"
+
+supports "fedora" "rhel" "debian" "ubuntu"
+
+provides "gnome-desktop" "display-manager"
+
+requires "build-environment"
+
+packages "gnome-shell" "gnome-session" "gnome-control-center" \
+    "gnome-settings-daemon" "gnome-initial-setup" "gnome-keyring" \
+    "gnome-user-docs" "orca" "ibus" "xdg-desktop-portal-gnome" \
+    "xdg-desktop-portal-gtk" "glib-networking" "nautilus" "ptyxis" \
+    "gnome-text-editor" "gnome-calculator" "gnome-characters" "gnome-clocks" \
+    "gnome-font-viewer" "gnome-system-monitor" "gnome-disk-utility" "baobab" \
+    "loupe" "papers" "gnome-connections" "pinentry-gnome3" "gvfs" \
+    "gvfs-fuse" "cups" "firewalld" "accountsservice" "tuned" "tuned-ppd" \
+    "thermald" "switcheroo-control" "udisks2" "upower" "xdg-user-dirs" \
+    "xdg-user-dirs-gtk" "pipewire" "wireplumber" "bluez"
+
+// EL packages none of these.
+family "fedora" "debian" "ubuntu" {
+    packages "gnome-backgrounds" "yelp" "gnome-logs" "gnome-calendar" \
+        "gnome-contacts" "gnome-maps" "gnome-weather" "showtime" "simple-scan"
+}
+family "fedora" {
+    packages "systemd-oomd-defaults" "sushi"
+}
+family "fedora" "rhel" {
+    packages "gdm" "gnome-session-wayland-session" "gnome-keyring-pam" \
+        "snapshot" "gvfs-mtp" "gvfs-smb" "gvfs-gphoto2" "pipewire-pulseaudio" \
+        "NetworkManager-wifi" "NetworkManager-bluetooth" "wpa_supplicant" \
+        "google-noto-color-emoji-fonts"
+}
+family "debian" "ubuntu" {
+    packages "gdm3" "libpam-gnome-keyring" "gnome-snapshot" "gnome-sushi" \
+        "gvfs-backends" "gvfs-daemons" "gstreamer1.0-plugins-good" \
+        "pipewire-pulse" "network-manager" "wpasupplicant" "fonts-noto-core" \
+        "fonts-noto-color-emoji"
+}
