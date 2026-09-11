@@ -111,7 +111,9 @@ jobs:
       - name: Lint
         run: |
           set -euo pipefail
-          mapfile -t scripts < <(find . -path ./.git -prune -o -name '*.sh' -type f -print)
+          # A helper below is left to the shell it names, so it is not a script here too.
+          mapfile -t scripts < <(find . -path ./.git -prune -o -name '*.sh' -type f \
+            ! \( -path '*/files/*' \( -path '*/libexec/*' -o -path '*/system-generators/*' \) \) -print)
           mapfile -t repos < <(find . -path ./.git -prune -o -name repo -type f -print)
           # What a module ships to run on the machine, and each names its shell.
           mapfile -t helpers < <(find . -path ./.git -prune -o -path '*/files/*' -type f \

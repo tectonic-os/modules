@@ -1,8 +1,10 @@
 #!/bin/bash
 
 # A package scriptlet may not enable a unit; the preset pass decides that. So
-# `systemctl` is a stub from the moment it exists, whichever install brought it
-# or upgraded it, and `build-environment`'s finalize puts the real one back.
+# `systemctl` is a stub after any install that brought it or upgraded it, and
+# `build-environment`'s finalize puts the real one back. Scriptlets inside the
+# transaction that installs systemd still reach the real binary; the preset
+# pass overrules them, and `validate-image` checks that it did.
 stash_systemctl() {
     [ -e /usr/bin/systemctl ] || return 0
     [ "$(readlink /usr/bin/systemctl)" = /usr/bin/true ] && return 0

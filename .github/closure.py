@@ -31,16 +31,20 @@ ROW = re.compile(r'^base "([^"]+)"')
 
 
 def row_requires(catalog, image):
-    """What the row for `image` requires. A digest pins a catalogued tag."""
-    image, row, out = image.split("@")[0], None, []
+    """What the row for `image` requires. A digest pins a catalogued tag, and
+    a base with no row fails: seeding nothing is the 2026-09-05 defect again."""
+    image, row, found, out = image.split("@")[0], None, False, []
     for line in catalog.read_text().splitlines():
         match = ROW.match(line)
         if match:
             row = match.group(1)
+            found = found or row == image
         elif line.startswith("}"):
             row = None
         elif row == image and line.lstrip().startswith("requires "):
             out += QUOTED.findall(line)
+    if not found:
+        sys.exit(f"closure.py: {catalog} has no row for {image}")
     return out
 
 
