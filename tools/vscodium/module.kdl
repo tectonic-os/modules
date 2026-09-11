@@ -4,13 +4,8 @@ supports "fedora" "debian" "ubuntu"
 
 requires "build-environment"
 
-family "fedora" {
-    // hardened-malloc is a secureblue COPR package and has no deb analogue,
-    // so the wrapper `fedora/module.sh` writes has nothing to order against
-    // on either deb family.
-    after "hardened-malloc"
-
-    packages "codium" enablerepo="vscodium"
-}
+// `fedora/module.sh` wraps codium to drop hardened-malloc's LD_PRELOAD. It reads
+// nothing hardened-malloc ships, so it needs no order against it.
+family "fedora" { packages "codium" enablerepo="vscodium"; }
 
 family "debian" "ubuntu" { packages "codium" }
