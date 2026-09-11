@@ -1,4 +1,5 @@
 source /ctx/lib/family.sh
+stash_systemctl
 
 # A plain container image installs no documentation: `rockylinux:10` sets
 # `tsflags=nodocs`, the rpm twin of Ubuntu's dpkg excludes, and a machine wants
@@ -15,5 +16,5 @@ if command -v dnf5 > /dev/null; then
     dnf5 install -y dnf5-plugins
 fi
 
-# Last, since both installs above can put the real binary back.
+# Again, since both installs above can put the real binary back.
 stash_systemctl
