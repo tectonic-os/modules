@@ -43,6 +43,15 @@ rm -f /etc/ssh/ssh_host_*
 # over a placeholder no machine wants.
 rm -f /etc/fstab
 
+# ---- the bootloader payload ----
+# bootupd installs the loader from /usr/lib/bootupd/updates and generates that
+# from /usr/lib/ostree-boot, while the shim and GRUB packages unpack under
+# /boot/efi, which is emptied below. Without it `bootc install` refuses with
+# `bootupd is required for ostree-based installs`.
+mkdir -p /usr/lib/ostree-boot
+mv /boot/efi /usr/lib/ostree-boot/efi
+bootupctl backend generate-update-metadata
+
 # ---- the ostree-shaped root ----
 # What `centos-bootc:stream10` is shaped like, measured 2026-09-11: /home,
 # /root, /srv and /mnt are symlinks into /var, /ostree points into /sysroot,

@@ -3,3 +3,8 @@
 # the module that decides it, and its preset sorts after this one.
 disable sshd.service
 disable sshd.socket
+
+# A composefs root is read-only, so /tmp is a tmpfs or nothing can write it:
+# `bootc status` fails creating its SELinux probe there. EL's presets leave the
+# unit disabled; `almalinux-bootc:10` enables it.
+enable tmp.mount

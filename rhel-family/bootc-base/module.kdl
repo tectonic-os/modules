@@ -41,7 +41,7 @@ packages "systemd" "systemd-udev" "kernel" "dracut" "ostree" "composefs" \
     "bootc" "bootupd" "rpm-ostree" "skopeo" "podman" "crun" \
     "selinux-policy-targeted" "policycoreutils" \
     "NetworkManager" "openssh-server" "sudo" "iproute" \
-    "shim-x64" "grub2-efi-x64" "efibootmgr" \
+    "shim-x64" "grub2-efi-x64" "grub2-pc" "efibootmgr" \
     "e2fsprogs" "xfsprogs" "dosfstools" "cryptsetup" "lvm2" \
     "ca-certificates" "curl" "zstd" "less" "man-db"
 
