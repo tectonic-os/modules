@@ -1,0 +1,3 @@
+# The helpers a module sources live at /ctx/lib, which exists only inside a
+# build. The same two a consumer's generated .shellcheckrc disables.
+disable=SC1090,SC1091

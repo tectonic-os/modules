@@ -6,30 +6,42 @@ whose `requires` nothing in the image provides is an unmet-requires error, so
 the set has to be closed over `requires` and `requires-file` against the
 providers this family actually has. Run from the collection root.
 
-    closure.py <family> <name>...
+    closure.py <family> <base> <name>...
 
 A requirement no module here provides is left alone, because the base provides
 a MAC policy, `rechunking` and `initramfs-generation` and `tect` is the one that
 knows which. Requirements come out before the module that needs them.
+
+What the base's catalog row requires is closed over too, since `create image`
+seeds it into every image on that base. It is read from `$TECT_ASSETS/bases.kdl`,
+the catalog the leg's own tool carries, because it is a fact about the row and
+not the family: Rocky requires `bootc-base` and the other three EL rows do not.
+Measured 2026-09-05: a `changed` leg naming one unrelated module scaffolded an
+image whose seeded `bootc-base` had nothing providing `container-runtime`.
 """
 
-# What the base row itself requires, which `create image` seeds into every image
-# on it. Nothing in `wanted` need mention the seeded module, and it has
-# requirements of its own -- `deb-family/bootc-base` requires
-# `container-runtime` -- so the seed is closed over here rather than left to a
-# leg that happens to name it. Measured 2026-09-05: a `changed` leg naming one
-# unrelated module scaffolded an image whose seeded `bootc-base` had nothing
-# providing `container-runtime`.
-# `rhel` is absent on purpose: only its Rocky row requires `bootc-base`, and the
-# hardening leg closes over `rhel` on cs10, which is a bootc image already.
-SEEDED = {"debian": ("bootc-base",), "ubuntu": ("bootc-base",)}
-
+import os
 import re
 import sys
 from pathlib import Path
 
 DECL = re.compile(r'^\s*(provides|requires)(?:-file)?\s')
 QUOTED = re.compile(r'"([^"]*)"')
+ROW = re.compile(r'^base "([^"]+)"')
+
+
+def row_requires(catalog, image):
+    """What the row for `image` requires. A digest pins a catalogued tag."""
+    image, row, out = image.split("@")[0], None, []
+    for line in catalog.read_text().splitlines():
+        match = ROW.match(line)
+        if match:
+            row = match.group(1)
+        elif line.startswith("}"):
+            row = None
+        elif row == image and line.lstrip().startswith("requires "):
+            out += QUOTED.findall(line)
+    return out
 
 
 def read(path):
@@ -47,9 +59,12 @@ def read(path):
 
 
 def main(argv):
-    if len(argv) < 2:
+    if len(argv) < 3:
         sys.exit(__doc__)
-    family, wanted = argv[1], argv[2:]
+    family, base, wanted = argv[1], argv[2], argv[3:]
+    catalog = Path(os.environ.get("TECT_ASSETS", "")) / "bases.kdl"
+    if not catalog.is_file():
+        sys.exit(f"closure.py: no catalog at {catalog}; set TECT_ASSETS")
 
     modules = {}
     for manifest in sorted(Path(".").rglob("module.kdl")):
@@ -78,7 +93,7 @@ def main(argv):
                 visit(needed)
         order.append(name)
 
-    for capability in SEEDED.get(family, ()):
+    for capability in row_requires(catalog, base):
         seeded = provider.get(capability)
         if seeded:
             visit(seeded)

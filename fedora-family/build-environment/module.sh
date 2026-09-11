@@ -1,10 +1,5 @@
-# A package scriptlet may not enable a unit; the preset pass decides that. A
-# base carrying no systemd has nothing to stash here, and the module that
-# installs one stashes it then: `rhel-family/bootc-base`.
-if [ -e /usr/bin/systemctl ] && [ ! -e /usr/bin/systemctl.bak ]; then
-    mv /usr/bin/systemctl /usr/bin/systemctl.bak
-    ln -s /usr/bin/true /usr/bin/systemctl
-fi
+source /ctx/lib/family.sh
+stash_systemctl
 
 # A plain container image installs no documentation: `rockylinux:10` sets
 # `tsflags=nodocs`, the rpm twin of Ubuntu's dpkg excludes, and a machine wants

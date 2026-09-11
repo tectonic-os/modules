@@ -89,9 +89,8 @@ jobs:
 
   # Every leg lints the repository it scaffolds, and that lint prunes the
   # `modules/.remote` the collection is imported into, so the collection's own
-  # shell is linted here or nowhere. SC1090 and SC1091 are what a consumer's
-  # `.shellcheckrc` disables: the helpers are sourced from /ctx/lib, which
-  # exists only inside a build.
+  # shell is linted here or nowhere. `.shellcheckrc` carries what a consumer's
+  # disables, so a local `shellcheck` agrees with this job.
   lint:
     name: Lint the collection's shell
     runs-on: ubuntu-24.04
@@ -114,13 +113,16 @@ jobs:
           set -euo pipefail
           mapfile -t scripts < <(find . -path ./.git -prune -o -name '*.sh' -type f -print)
           mapfile -t repos < <(find . -path ./.git -prune -o -name repo -type f -print)
-          check=(shellcheck -s bash -e SC1090 -e SC1091)
-          "${check[@]}" "${scripts[@]}"
+          # What a module ships to run on the machine, and each names its shell.
+          mapfile -t helpers < <(find . -path ./.git -prune -o -path '*/files/*' -type f \
+            \( -path '*/libexec/*' -o -path '*/system-generators/*' \) -print)
+          shellcheck -s bash "${scripts[@]}"
           # `REPO_ID` is a `repo` file's interface: the helper and the emitter
           # read it, and shellcheck sees neither.
-          "${check[@]}" -e SC2034 "${repos[@]}"
-          shfmt -i 4 -ci -bn -sr -d "${scripts[@]}" "${repos[@]}"
-          echo "::notice::${#scripts[@]} scripts and ${#repos[@]} repo files are clean"
+          shellcheck -s bash -e SC2034 "${repos[@]}"
+          shellcheck "${helpers[@]}"
+          shfmt -i 4 -ci -bn -sr -d "${scripts[@]}" "${repos[@]}" "${helpers[@]}"
+          echo "::notice::${#scripts[@]} scripts, ${#repos[@]} repo files and ${#helpers[@]} helpers are clean"
 
   # Deliberately not an `image` in the matrix below: it shares none of that
   # job's steps — no tool, no scaffold, no import, no build — so threading it
@@ -301,6 +303,7 @@ jobs:
       - name: Choose this leg's modules
         env:
           FROM: ${{ github.event.pull_request.base.sha }}
+          BASE: ${{ matrix.base }}
         run: |
           set -euo pipefail
           case "$IMAGE" in
@@ -314,7 +317,7 @@ jobs:
               dir=deb-family
               [ "$FAMILY" = rhel ] && dir=rhel-family
               find "$dir" -mindepth 2 -name module.kdl -printf '%h\n' \
-                | sort -u | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+                | sort -u | xargs -r python3 .github/closure.py "$FAMILY" "$BASE" > "$NAMES"
               ;;
             hardening)
               # A module that does not support `rhel` is skipped at import,
@@ -323,7 +326,7 @@ jobs:
                 printf '%s\n' $HARDENING
                 find hardening -mindepth 2 -name module.kdl -printf '%h\n'
               } | sort -u \
-                | xargs -r python3 .github/closure.py "$FAMILY" > "$NAMES"
+                | xargs -r python3 .github/closure.py "$FAMILY" "$BASE" > "$NAMES"
               ;;
             # `xargs` without `-r`, so the closure runs on an empty set too:
             # a commit touching no module still scaffolds an image, and what
@@ -344,7 +347,7 @@ jobs:
                     dir="$(dirname "$dir")"
                   done
                 done | sort -u \
-                  | xargs python3 .github/closure.py "$FAMILY" > "$NAMES"
+                  | xargs python3 .github/closure.py "$FAMILY" "$BASE" > "$NAMES"
               fi
               ;;
           esac

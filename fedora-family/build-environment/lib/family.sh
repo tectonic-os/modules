@@ -1,5 +1,15 @@
 #!/bin/bash
 
+# A package scriptlet may not enable a unit; the preset pass decides that. So
+# `systemctl` is a stub from the moment it exists, whichever install brought it
+# or upgraded it, and `build-environment`'s finalize puts the real one back.
+stash_systemctl() {
+    [ -e /usr/bin/systemctl ] || return 0
+    [ "$(readlink /usr/bin/systemctl)" = /usr/bin/true ] && return 0
+    mv -f /usr/bin/systemctl /usr/bin/systemctl.bak
+    ln -s /usr/bin/true /usr/bin/systemctl
+}
+
 # `dnf` is dnf5 on Fedora and dnf4 on CentOS Stream 10, and both take these arguments.
 # COPR and `addrepo` below are dnf5's, so Fedora's alone.
 install_packages() {
@@ -8,6 +18,7 @@ install_packages() {
         args+=(--enablerepo="$TECT_ENABLE_REPO")
     fi
     dnf install -y "${args[@]}" "$@"
+    stash_systemctl
 }
 
 install_groups() {
@@ -16,6 +27,7 @@ install_groups() {
         args+=(--enablerepo="$TECT_ENABLE_REPO")
     fi
     dnf group install -y "${args[@]}" "$@"
+    stash_systemctl
 }
 
 enable_copr() {
