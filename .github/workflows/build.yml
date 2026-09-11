@@ -218,14 +218,14 @@ jobs:
       HARDENING: updates/signature-policy
       # The profile the hardening image is measured by, on CentOS Stream 10.
       CONFORMS: cis_server_l1
-      # The floor is the runner's count, since its kernel answers the
-      # `sysctl_*` rules, and moves only by editing this line. `--baseline` is
+      # The floor is a booted machine's count, which reads the image's own
+      # kernel, and moves only by editing this line. `--baseline` is
       # the other half and a different instrument: it holds the rules and
       # drifts to the last run, so it sees a single rule lost between two runs
       # that both meet this number. Failures rather than passes, because a
       # rule the content stops selecting drops both counts and only one of
       # them is a regression.
-      MAX_FAILS: "21"
+      MAX_FAILS: "7"
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -584,39 +584,51 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/baseline.json
-          key: scap-tailored-${{ matrix.image }}-${{ github.run_id }}
-          restore-keys: scap-tailored-${{ matrix.image }}-
+          key: scap-machine-${{ matrix.image }}-${{ github.run_id }}
+          restore-keys: scap-machine-${{ matrix.image }}-
 
-      # The content is the image's own: the revision the build remediated
-      # with, installed into a copy of the image that is thrown away. Files go
-      # in and out with `podman cp`, since a bind mount of runner-owned files
-      # fails the unowned-file rules. From outside, a mounted rootfs reads
-      # almost every rule notapplicable.
+      # The consumer smoke test's boot path: installed as the recipe says, and
+      # booted, so the kernel, the services and the mounts are the machine's.
+      - name: Boot the image
+        if: matrix.image == 'hardening'
+        timeout-minutes: 30
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends qemu-system-x86 ovmf
+          # qemu runs as the runner user, which is in no group that owns it
+          sudo chmod 666 /dev/kvm
+          "${ROOT}/scripts/smoke.sh" "${IMAGE}:latest" "${RUNNER_TEMP}/vm"
+
+      # The content is the image's own, the revision the build remediated
+      # with, installed onto the machine under `bootc usr-overlay`, which lasts
+      # until the next boot. Files travel over ssh as root's own.
       - name: Evaluate the rules
         if: matrix.image == 'hardening'
         run: |
           set -euo pipefail
+          s() {
+            ssh -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null \
+              -o LogLevel=ERROR -i "${RUNNER_TEMP}/vm/key" -p 2222 root@localhost "$@"
+          }
           content="$(cd "$ROOT" && "$TECT_BIN" scap content --target "$IMAGE")"
-          sudo podman run -d --name scan --entrypoint "" "${IMAGE}:latest" sleep infinity
+          s bootc usr-overlay
           # A transient mirror error is the same red X as a false claim, so
           # the install retries.
-          sudo podman exec scan sh -c 'n=0
+          s 'n=0
             until dnf -y install openscap-scanner scap-security-guide >/dev/null; do
               n=$((n+1))
               [ "$n" -ge 3 ] && exit 1
               dnf clean all
               sleep 15
             done'
-          sudo podman cp "scan:${content}" "${RUNNER_TEMP}/ds.xml"
+          s cat "$content" > "${RUNNER_TEMP}/ds.xml"
           (cd "$ROOT" && "$TECT_BIN" scap tailoring --target "$IMAGE" \
-            --datastream "${RUNNER_TEMP}/ds.xml") > "${RUNNER_TEMP}/tailoring.xml"
-          sudo podman cp "${RUNNER_TEMP}/tailoring.xml" scan:/tmp/tailoring.xml
-          sudo podman exec scan oscap xccdf eval \
+            --datastream "${RUNNER_TEMP}/ds.xml") | s 'cat > /tmp/tailoring.xml'
+          s oscap xccdf eval \
             --tailoring-file /tmp/tailoring.xml --profile xccdf_tect_profile_measured \
             --results-arf /tmp/arf.xml "$content" || true
-          sudo podman cp scan:/tmp/arf.xml "${RUNNER_TEMP}/arf.xml"
-          sudo podman rm -f scan
-          sudo chown "$(id -u):$(id -g)" "${RUNNER_TEMP}/ds.xml" "${RUNNER_TEMP}/arf.xml"
+          s cat /tmp/arf.xml > "${RUNNER_TEMP}/arf.xml"
           [ -s "${RUNNER_TEMP}/arf.xml" ]
           echo "DATASTREAM=${RUNNER_TEMP}/ds.xml" >> "$GITHUB_ENV"
 
@@ -687,9 +699,19 @@ jobs:
           retention-days: 7
           if-no-files-found: ignore
 
+      - name: Serial console
+        if: failure() && matrix.image == 'hardening'
+        run: |
+          cat "${RUNNER_TEMP}/vm/qemu.log" "${RUNNER_TEMP}/vm/console.log" 2> /dev/null || true
+
+      - name: Stop qemu
+        if: always() && matrix.image == 'hardening'
+        run: |
+          kill "$(cat "${RUNNER_TEMP}/vm/qemu.pid" 2> /dev/null)" 2> /dev/null || true
+
       - name: Save the pass set for the next scan
         if: always() && matrix.image == 'hardening'
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ${{ runner.temp }}/baseline.json
-          key: scap-tailored-${{ matrix.image }}-${{ github.run_id }}
+          key: scap-machine-${{ matrix.image }}-${{ github.run_id }}
