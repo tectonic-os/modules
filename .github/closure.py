@@ -7,6 +7,11 @@ the set has to be closed over `requires` and `requires-file` against the
 providers this family actually has. Run from the collection root.
 
     closure.py <family> <base> <name>...
+    closure.py --split <family> <base> <name>...
+
+`--split` is the collection leg's: modules providing one capability are
+alternatives, so it prints `<image> <module>` lines, image 0 the named set with
+one provider of each and every later image the rest, closed over its requires.
 
 A requirement no module here provides is left alone, because the base provides
 a MAC policy, `rechunking` and `initramfs-generation` and `tect` is the one that
@@ -62,7 +67,41 @@ def read(path):
     return supports, provides, requires
 
 
+def split(modules, family, names):
+    """The named modules in images that each hold one provider of anything: a
+    module joins the first image that provides none of what it provides."""
+    images = []
+    for name in sorted(n for n in names if n in modules and family in modules[n][0]):
+        for members, held in images:
+            if not modules[name][1] & held:
+                members.append(name)
+                held.update(modules[name][1])
+                break
+        else:
+            images.append(([name], set(modules[name][1])))
+    groups = [members for members, _ in images] or [[]]
+    # A module needing what only an alternative provides follows it out of the
+    # first image; the later images are closed over their requires anyway.
+    changed = True
+    while changed:
+        changed = False
+        first = groups[0]
+        held = set().union(*(modules[m][1] for m in first))
+        for name in list(first):
+            wants = modules[name][2] - held
+            home = next((i for i, other in enumerate(groups[1:], 1)
+                         if any(wants & modules[m][1] for m in other)), None)
+            if home is not None:
+                first.remove(name)
+                groups[home].append(name)
+                changed = True
+                break
+    return groups
+
+
 def main(argv):
+    splitting = argv[1:2] == ["--split"]
+    argv = [argv[0]] + argv[2:] if splitting else argv
     if len(argv) < 3:
         sys.exit(__doc__)
     family, base, wanted = argv[1], argv[2], argv[3:]
@@ -77,6 +116,22 @@ def main(argv):
             continue
         modules[name] = read(manifest)
 
+    seeded_by_row = row_requires(catalog, base)
+    if not splitting:
+        for name in close(modules, family, seeded_by_row, wanted):
+            print(name)
+        return
+    # The first image is the collection as it stands; each after it holds
+    # alternative providers, closed over what they require.
+    first, *rest = split(modules, family, wanted)
+    for name in first:
+        print(f"0 {name}")
+    for index, alternates in enumerate(rest, 1):
+        for name in close(modules, family, seeded_by_row, alternates):
+            print(f"{index} {name}")
+
+
+def close(modules, family, seeded_by_row, wanted):
     provider = {}
     for name in sorted(modules):
         supports, provides, _ = modules[name]
@@ -104,15 +159,14 @@ def main(argv):
                 visit(needed)
         order.append(name)
 
-    for capability in row_requires(catalog, base):
+    for capability in seeded_by_row:
         seeded = provider.get(capability)
         if seeded:
             visit(seeded)
     for name in wanted:
         if name in modules and family in modules[name][0]:
             visit(name)
-    for name in order:
-        print(name)
+    return order
 
 
 if __name__ == "__main__":

@@ -309,9 +309,19 @@ jobs:
         run: |
           set -euo pipefail
           case "$IMAGE" in
+            # Modules providing one capability are alternatives and one image
+            # holds one of each, so the rest go into `$NAMES.1` onwards, each
+            # its own image in this repository and closed over its requires.
             collection)
-              find . -mindepth 2 -name module.kdl -not -path './.*' \
-                -printf '%h\n' | sed 's|^\./||' | sort > "$NAMES"
+              mapfile -t all < <(find . -mindepth 2 -name module.kdl -not -path './.*' \
+                -printf '%h\n' | sed 's|^\./||' | sort)
+              python3 .github/closure.py --split "$FAMILY" "$BASE" "${all[@]}" \
+                | awk -v n="$NAMES" '{ print $2 > ($1 == 0 ? n : n "." $1) }'
+              for alt in "${NAMES}".[0-9]*; do
+                [ -e "$alt" ] || continue
+                echo "::notice::$(wc -l < "$alt") modules in ${IMAGE}-${alt##*.}"
+                cat "$alt"
+              done
               ;;
             bootc-base)
               # One family set turns a plain container image into a bootc one,
@@ -379,9 +389,15 @@ jobs:
           BASE: ${{ matrix.base }}
         run: |
           set -euo pipefail
+          shopt -s nullglob
           "$TECT_BIN" create repo "$IMAGE" --root "$ROOT" --no-tui \
             --owner tectonic-os --host github.com \
             --image "$IMAGE" --base "$BASE"
+          alts=("${NAMES}".[0-9]*)
+          for alt in "${alts[@]}"; do
+            "$TECT_BIN" create image "${IMAGE}-${alt##*.}" --root "$ROOT" --no-tui \
+              --owner tectonic-os --base "$BASE"
+          done
           # The image file is the interface for a `conforms`, and here it is the
           # only one: `set conforms` is a picker and `--no-tui` refuses to ask
           # rather than reading an answer, which is what the tool's own
@@ -417,15 +433,16 @@ jobs:
           # `build-disk` workflow. The assertions below are the point and stay.
           case "$FAMILY" in
           debian|ubuntu)
-            image="${ROOT}/${IMAGE}.image.kdl"
-            sed -i "s|^        family \"fedora\"$|        family \"${FAMILY}\"|" "$image"
-            grep -q '^        requires "bootc-base"$' "$image" \
-              || sed -i "s|^        family \"${FAMILY}\"$|        family \"${FAMILY}\"\n        requires \"bootc-base\"|" "$image"
-            for want in "        family \"${FAMILY}\"" '        requires "bootc-base"'; do
-              [ "$(grep -cx "$want" "$image")" = 1 ] || {
-                echo "::error::${image} does not carry exactly one \`${want# *}\`"
-                exit 1
-              }
+            for image in "${ROOT}"/*.image.kdl; do
+              sed -i "s|^        family \"fedora\"$|        family \"${FAMILY}\"|" "$image"
+              grep -q '^        requires "bootc-base"$' "$image" \
+                || sed -i "s|^        family \"${FAMILY}\"$|        family \"${FAMILY}\"\n        requires \"bootc-base\"|" "$image"
+              for want in "        family \"${FAMILY}\"" '        requires "bootc-base"'; do
+                [ "$(grep -cx "$want" "$image")" = 1 ] || {
+                  echo "::error::${image} does not carry exactly one \`${want# *}\`"
+                  exit 1
+                }
+              done
             done
             if [ "$FAMILY" = ubuntu ]; then
               repo="${ROOT}/repo.kdl"
@@ -437,6 +454,10 @@ jobs:
             fi
             ;;
           esac
+          # A key is the repository's, so a module in two images makes one.
+          declare -A keyed=()
+          import_into() {
+          local image="$1" name
           while read -r name; do
             case " $SKIP " in *" $name "*) continue ;; esac
             grep -q "^supports .*\"${FAMILY}\"" "${name}/module.kdl" || continue
@@ -446,11 +467,13 @@ jobs:
             # loop reaches it, and importing it twice is an error. Checked
             # against the file rather than against a list of known seeds,
             # because that set grows with the catalog.
-            if grep -q "module \"${name}\"" "${ROOT}/${IMAGE}.image.kdl"; then
+            if grep -q "module \"${name}\"" "${ROOT}/${image}.image.kdl"; then
               continue
             fi
             "$TECT_BIN" import module "tectonic-os/${name}" --root "$ROOT" \
-              --image "$IMAGE" --no-tui
+              --image "$image" --no-tui
+            [ -z "${keyed[$name]:-}" ] || continue
+            keyed[$name]=1
             case "$name" in
               boot/cachyos-kernel)
                 "$TECT_BIN" create key secureboot --root "$ROOT" --no-tui \
@@ -470,7 +493,12 @@ jobs:
                     -out "$ROOT/keys/public/etc/pki/containers/cosign.pub"
                 ;;
             esac
-          done < "$NAMES"
+          done < "$2"
+          }
+          import_into "$IMAGE" "$NAMES"
+          for alt in "${alts[@]}"; do
+            import_into "${IMAGE}-${alt##*.}" "$alt"
+          done
           cd "$ROOT" && "$TECT_BIN" generate
 
       - name: Run lint
@@ -482,7 +510,8 @@ jobs:
           PYTHONDONTWRITEBYTECODE: "1"
         run: |
           set -euo pipefail
-          mapfile -t names < "$NAMES"
+          shopt -s nullglob
+          mapfile -t names < <(sort -u "$NAMES" "${NAMES}".[0-9]*)
           if [ "${#names[@]}" -eq 0 ]; then
             echo "no modules in this leg"
             exit 0
@@ -547,6 +576,20 @@ jobs:
           echo "::endgroup::"
           cd "$ROOT" && sudo IMAGE_REGISTRY="$IMAGE_REGISTRY" \
             "$TECT_BIN" build --no-tui
+          # Each alternates image after it, and nothing after this step reads
+          # the one before, so it is dropped to leave the runner the room.
+          shopt -s nullglob
+          previous="$IMAGE"
+          for alt in "${NAMES}".[0-9]*; do
+            target="${IMAGE}-${alt##*.}"
+            sudo podman rmi --ignore "${previous}:latest" > /dev/null
+            sudo podman image prune -f > /dev/null
+            echo "::group::${target} Containerfile"
+            cat "${ROOT}/generated/${target}/Containerfile"
+            echo "::endgroup::"
+            sudo IMAGE_REGISTRY="$IMAGE_REGISTRY" "$TECT_BIN" build --no-tui --target "$target"
+            previous="$target"
+          done
 
       # The build already ran `bootc container lint`, and it cannot see either
       # of the two things this base got wrong. `Containerfile.skeleton` runs it
