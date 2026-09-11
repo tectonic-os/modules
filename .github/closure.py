@@ -85,6 +85,13 @@ def main(argv):
         for capability in sorted(provides):
             provider.setdefault(capability, name)
 
+    # A capability a named module provides is met by that module, so a diff
+    # touching one of two providers never pulls in the other.
+    for name in wanted:
+        if name in modules and family in modules[name][0]:
+            for capability in modules[name][1]:
+                provider[capability] = name
+
     order, seen = [], set()
 
     def visit(name):
