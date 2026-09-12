@@ -21,17 +21,22 @@ depmod "$kver"
 initramfs="/usr/lib/modules/${kver}/initramfs.img"
 dracut --force --kver "$kver" "$initramfs"
 
+# Three paths, because neither of the cheap checks sees what is missing:
 # `test -s` passes an initramfs with no bootc in it at all, which is what the
-# base deleted on 2026-08-30 shipped. Name the two paths that mount the
-# composefs deployment instead.
+# base deleted on 2026-08-30 shipped, and dracut listed `crypt` and `crypt-lib`
+# among the modules of an initrd whose only crypt content was a kernel module.
+# Two mount the composefs deployment and the third unlocks a LUKS root. The
+# third is the binary and not the `/usr/lib/systemd` name dracut also carries:
+# that one is a symlink, and `lsinitrd` prints a symlink's target after it.
 # A here-string and not a pipe: `grep -q` closes the pipe on its first match,
 # the writer takes SIGPIPE, and `pipefail` then reports the whole pipeline as
 # failed — so a piped form of this check fails loudest when it passes.
 listing="$(lsinitrd "$initramfs")"
 for path in usr/lib/bootc/initramfs-setup \
-    usr/lib/systemd/system/bootc-root-setup.service; do
+    usr/lib/systemd/system/bootc-root-setup.service \
+    usr/bin/systemd-cryptsetup; do
     if ! grep -q "[ /]${path}\$" <<< "$listing"; then
-        echo "the initramfs carries no ${path}, so it cannot mount a deployment" >&2
+        echo "the initramfs carries no ${path}, so a machine from this image cannot boot" >&2
         exit 1
     fi
 done

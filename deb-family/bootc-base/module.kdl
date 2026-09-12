@@ -76,6 +76,65 @@ asset "bootupd-vendor" {
     }
 }
 
+// **This module compiles bootc and bootupd from the pins above, and that is
+// the default.** The source is upstream's own released tarball, held to a
+// hash; `build-tools.sh` beside this file is every command that runs; and the
+// binaries that reach the image are the ones this repository's own build
+// produced. Nothing about it has to be taken on trust, which is why it is not
+// opt-out.
+//
+// It costs 212s of compile on a 32-thread host and 18m13s on a 4-vCPU runner,
+// measured 2026-09-12 and off `proving-ground` run `33858957423`. A rebuild
+// costs nothing: the layer is cached unless the module moves.
+//
+// **An image that wants that time back opts in**, and says so in its own
+// image file where anyone reading the repository can see it:
+//
+//     module "tectonic-os/deb-family/bootc-base" {
+//         prebuilt-tools #true
+//     }
+//
+// **Nothing publishes that tarball yet.** The pins below name no release, so
+// an image that opts in today compiles anyway and is told why. What will
+// publish it is a fork of each upstream carrying one commit — its build
+// workflow — so the attestation names the source tree the binary was built
+// from; `NEXT-46` stage 6 holds that design and what is unsettled in it.
+option "prebuilt-tools" type="bool" {
+    description "Fetch the compiled bootc and bootupd published from this module's pins instead of compiling them here"
+    default #false
+}
+
+// Two assets and not one gate, because `asset` is not a node a `family` block
+// holds and the two families link against their own libostree and libssl;
+// `module.sh` selects by the base's os-release ID.
+//
+// `manual`, and `version "none"` is the unpublished state rather than a
+// placeholder that could ever resolve: no release is named, so nothing is
+// fetched. A publisher lands the version and the hash together.
+//
+// **A sha256 says the bytes have not moved; an attestation says where they
+// came from**, and the build layer can only check the first — it has no
+// network trust anchor. So the hash is what this pins, a person verifies the
+// attestation in the commit that records it, and a tarball the layer cannot
+// verify it compiles instead.
+asset "bootc-tools-debian" {
+    pin {
+        manual "the tools workflow builds it from the four pins above; this records the release it wrote"
+        version "none"
+        url "https://github.com/tectonic-os/modules/releases/download/deb-bootc-tools-{version}/deb-bootc-tools-debian-{version}.tar.zst"
+        sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+}
+
+asset "bootc-tools-ubuntu" {
+    pin {
+        manual "the tools workflow builds it from the four pins above; this records the release it wrote"
+        version "none"
+        url "https://github.com/tectonic-os/modules/releases/download/deb-bootc-tools-{version}/deb-bootc-tools-ubuntu-{version}.tar.zst"
+        sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+    }
+}
+
 // `bootc install` needs the ostree CLI and nothing else — measured, not
 // assumed: `podman` is not required and the base's own `skopeo` is what bootc
 // 1.16 shells out to. The rest is what a container image lacks and a machine
@@ -88,6 +147,15 @@ asset "bootupd-vendor" {
 // image it fails the unit rather than skipping the page. `openssh-server` is
 // how anyone reaches a machine installed from this base at all, `sudo` is how
 // they become root on it, and `less` is what `journalctl` pages through.
+//
+// `systemd-cryptsetup` is the binary that unlocks a LUKS root at boot, and
+// since systemd 255 it is a package of its own: `cryptsetup-bin` puts
+// `/usr/sbin/cryptsetup` in the image and nothing at all in the initrd, so
+// every LUKS install this base produced booted to an emergency shell.
+// Measured on `gnome-debian` 2026-09-12 — the initrd's only crypt content was
+// `dm-crypt.ko.xz`, the kernel module with no binary to drive it, while dracut
+// listed `crypt` and `crypt-lib` among that same initrd's modules. A module
+// list is not evidence; `finalize.sh` asserts the binary inside the initrd.
 //
 // `iproute2` is not a convenience. Neither deb base ships it, so `ip` did not
 // exist on any machine installed from here — which is how a machine with no
@@ -109,7 +177,7 @@ packages "dracut" "ostree" "composefs" "systemd-boot" "systemd-boot-efi" \
     "shim-signed" "grub-efi-amd64-signed" "grub-common" "systemd-resolved" \
     "libnss-resolve" "libnss-myhostname" "iproute2" "skopeo" \
     "ca-certificates" "zstd" "curl" "btrfs-progs" "xfsprogs" "e2fsprogs" \
-    "dosfstools" "fdisk" "efibootmgr" "cryptsetup-bin" "dmsetup" \
+    "dosfstools" "fdisk" "efibootmgr" "cryptsetup-bin" "systemd-cryptsetup" "dmsetup" \
     "openssh-server" "sudo" "less" "man-db"
 
 family "debian" { packages "linux-image-amd64" "firmware-linux-free" }
