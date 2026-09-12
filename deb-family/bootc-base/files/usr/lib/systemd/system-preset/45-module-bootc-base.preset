@@ -41,7 +41,10 @@ enable sysroot-boot-rw.service
 # nothing that configures a link, so without this line an installed machine has
 # no address and `bootc upgrade` cannot reach a registry — measured 2026-09-04,
 # `failure in name resolution` on a machine installed from media, with `ip` not
-# installed to diagnose it. The image carries no NetworkManager and
-# `systemd-networkd` is already present as part of systemd, so this line plus
-# `89-ethernet.network` is the whole of the fix.
+# installed to diagnose it. `systemd-networkd` is already present as part of
+# systemd, so this line plus `89-ethernet.network` is the whole of the fix.
+#
+# An image that installs NetworkManager keeps this line and loses the
+# `.network`, which `finalize.sh` removes: networkd has four socket units that
+# land in `failed` if it is stopped from running at all.
 enable systemd-networkd.service

@@ -132,6 +132,16 @@ rm -f /etc/fstab
 # `45-module-bootc-base.preset` carries the other half.
 rm -f /etc/systemd/system/multi-user.target.wants/ssh.service
 
+# `89-ethernet.network` claims every ethernet, and a desktop module installs
+# NetworkManager, which claims the same link: both configure it and networkd
+# logs `Foreign process 'NetworkManager' changed sysctl`. This hook is the
+# first place that can tell — a preset is written before anyone knows what a
+# later module installs. The claim goes and networkd stays running, so its four
+# socket units have a service to activate and nothing lands in `failed`.
+if [ -x /usr/sbin/NetworkManager ]; then
+    rm -f /usr/lib/systemd/network/89-ethernet.network
+fi
+
 # And the rest of what `debian:*` ships as a *container* image, which a machine
 # is not: Docker's own build policy, five files, measured on
 # `docker.io/library/debian:forky` 2026-09-01. `docker-apt-speedup` is
