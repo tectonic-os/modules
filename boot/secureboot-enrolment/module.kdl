@@ -1,0 +1,13 @@
+description "Secure Boot enrollment artifacts for an owner-signed UKI"
+
+supports "fedora"
+
+provides "secureboot-enrolment"
+requires "boot-chain-uki"
+requires "secureboot-key"
+
+secret "mok_privkey"
+
+family "fedora" {
+    packages "efitools" "mokutil" "openssl" "util-linux"
+}

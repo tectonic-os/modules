@@ -1,0 +1,23 @@
+description "Experimental owner-signed UKI boot chain with systemd-boot"
+
+supports "fedora"
+
+provides "boot-chain-uki" file="/boot/EFI/systemd/systemd-bootx64.efi"
+
+requires "build-environment"
+requires "initramfs-generation"
+
+key "secureboot" {
+    generator "openssl" profile="module-signing" bits=4096
+    public "/usr/share/secureboot/sb_cert.der" format="der"
+    private "MOK.priv"
+}
+
+secret "mok_privkey"
+
+family "fedora" {
+    packages "systemd-ukify" "binutils" "systemd-boot-unsigned" \
+        "sbsigntools" "openssl"
+}
+
+fragment position="tail"

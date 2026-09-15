@@ -208,9 +208,9 @@ jobs:
       IMAGE: ${{ matrix.image }}
       FAMILY: ${{ matrix.family }}
       # goojust pins an asset on a repository that does not resolve yet, and
-      # system-menu/power-scripts requires it. Both return when that repository
-      # lands.
-      SKIP: system-menu/goojust system-menu/power-scripts
+      # system-menu/power-scripts requires it. UKI modules require an image-level
+      # boot declaration and are covered by their generated consumer build.
+      SKIP: system-menu/goojust system-menu/power-scripts boot/uki boot/secureboot-enrolment
       # The walk under `hardening/` finds every hardening mechanism.
       # `signature-policy` is added by name because it is not one: the
       # published hardening image needs the module declaring the cosign
