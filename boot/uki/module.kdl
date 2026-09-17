@@ -13,7 +13,18 @@ key "secureboot" {
     private "MOK.priv"
 }
 
+key "pcr" {
+    // 2048 is the TPM 2.0 RSA baseline; 4096 is optional and libtpms — and
+    // therefore every emulated TPM — refuses to load it, which breaks the
+    // PolicyAuthorize unseal. The Secure Boot key above stays 4096: the
+    // firmware verifies it directly and no TPM ever loads it.
+    generator "openssl" profile="pcr-signing" bits=2048
+    public "/usr/share/secureboot/pcr.pub" format="pem"
+    private "pcr.priv"
+}
+
 secret "mok_privkey"
+secret "pcr_privkey"
 
 family "fedora" {
     packages "systemd-ukify" "binutils" "systemd-boot-unsigned" \

@@ -6,6 +6,7 @@ provides "bootc-base"
 
 provides "bootc" "bootupctl"
 provides "dpkg-database" file="/usr/lib/sysimage/dpkg"
+provides "luks-initramfs"
 // Installed here and enabled by `login-access`, which requires it.
 provides "ssh"
 
