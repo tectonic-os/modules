@@ -4,7 +4,7 @@ openssl x509 -in "$MOK_CERT_DER" -inform DER \
     -out /usr/share/secureboot/sb_cert.pem -outform PEM
 if mok_signing_available; then
     sign_vmlinuz /usr/lib/systemd/boot/efi/systemd-bootx64.efi
-    install -D -m 0644 /dev/null /usr/share/tectonic/secureboot-signed
+    install -D -m 0644 /dev/null /usr/share/secureboot/signed
 else
     echo "No MOK key supplied, systemd-boot is unsigned."
 fi
@@ -21,7 +21,7 @@ if [ -s /run/secrets/pcr_privkey ]; then
         exit 1
     fi
     install -D -m 0644 /usr/share/secureboot/pcr.pub \
-        /usr/share/tectonic/pcr-policy.pem
+        /usr/share/secureboot/pcr-policy.pem
 else
     echo "No PCR signing key supplied, the image carries no PCR policy."
 fi
