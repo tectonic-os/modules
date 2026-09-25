@@ -30,9 +30,10 @@ install -D -m 0644 /usr/lib/systemd/boot/efi/systemd-bootx64.efi \
     /boot/EFI/systemd/systemd-bootx64.efi
 install -D -m 0644 /usr/lib/systemd/boot/efi/systemd-bootx64.efi \
     /boot/EFI/BOOT/BOOTX64.EFI
-bootc --version > /usr/share/tectonic/composefs-sealer-version
 install -D -m 0644 "$MODDIR/canary/digest" \
     /usr/share/tectonic/composefs-canary-digest
+# `install -D` above creates `/usr/share/tectonic`, which the redirect needs.
+bootc --version > /usr/share/tectonic/composefs-sealer-version
 if [ -n "${BOOT_CHAIN:-}" ]; then
     printf '%s\n' "$BOOT_CHAIN" > /usr/share/tectonic/boot-chain
 fi
