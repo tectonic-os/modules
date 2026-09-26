@@ -1,16 +1,11 @@
-# Runs after every module's installs, which is the whole point: an initramfs
-# built before the last package is a lie, and state moved out of /var before
-# the last install leaves the rest of it behind. The tool's own /opt and /var
-# passes run after this hook, so nothing here writes a tmpfiles rule for a
-# directory it leaves in /var — that pass records them.
+# Module authors run this hook after package installs so the initramfs and
+# relocated package state include every module. They leave `/opt` and `/var`
+# tmpfiles rules to Tect's later finalizer.
 
-# ---- the initramfs ----
-# bootc looks for the kernel at /usr/lib/modules/<kver>/vmlinuz, which is not
-# where the Debian package puts it.
+# Debian maintainers install the kernel under `/boot`. Module authors copy it
+# to the path that bootc requires under `/usr/lib/modules/<kver>`.
 kver="$(find /usr/lib/modules -mindepth 1 -maxdepth 1 -type d -printf '%f\n')"
-# `wc -l` counts 1 for the empty string, so no kernel at all would pass a count
-# check and fail later on `cp /boot/vmlinuz-` instead — which is the confusing
-# failure this guard exists to replace.
+# Maintainers test the empty case because `wc -l` counts an empty string as one.
 if [ -z "$kver" ] || [ "$(printf '%s\n' "$kver" | wc -l)" != 1 ]; then
     echo "bootc wants exactly one kernel; /usr/lib/modules has: ${kver}" >&2
     exit 1
@@ -21,16 +16,10 @@ depmod "$kver"
 initramfs="/usr/lib/modules/${kver}/initramfs.img"
 dracut --force --kver "$kver" "$initramfs"
 
-# Three paths, because neither of the cheap checks sees what is missing:
-# `test -s` passes an initramfs with no bootc in it at all, which is what the
-# base deleted on 2026-08-30 shipped, and dracut listed `crypt` and `crypt-lib`
-# among the modules of an initrd whose only crypt content was a kernel module.
-# Two mount the composefs deployment and the third unlocks a LUKS root. The
-# third is the binary and not the `/usr/lib/systemd` name dracut also carries:
-# that one is a symlink, and `lsinitrd` prints a symlink's target after it.
-# A here-string and not a pipe: `grep -q` closes the pipe on its first match,
-# the writer takes SIGPIPE, and `pipefail` then reports the whole pipeline as
-# failed — so a piped form of this check fails loudest when it passes.
+# Image authors require the bootc setup paths and the cryptsetup executable
+# because initramfs size and dracut module names do not prove their presence.
+# They use a here-string because `grep -q` under `pipefail` would turn a
+# successful piped match into a SIGPIPE failure.
 listing="$(lsinitrd "$initramfs")"
 for path in usr/lib/bootc/initramfs-setup \
     usr/lib/systemd/system/bootc-root-setup.service \
@@ -41,21 +30,21 @@ for path in usr/lib/bootc/initramfs-setup \
     fi
 done
 
-# ---- package state out of /var ----
-# /var is applied once at provisioning and never touched by `bootc upgrade`, so
-# state that describes the *image* has to live under /usr or a long-lived
-# machine's `dpkg -l` becomes fiction. Each of these has broken a build:
-# `sgml-base` and `xml-core` fail their postinst triggers on a directory the
-# package ships and /var no longer has, and `ucf` and the two
-# deb-systemd-helper stores are the same class.
-#
-# `debconf` belongs to that class and is deliberately *not* here. Its database
-# is `/var/cache/debconf`, and `/var/cache` is a build cache mount on every
-# layer: moving it writes the replacement symlink onto the cache rather than
-# into the image, where it outlives this build and points at nothing in the
-# next one — measured, as a `DbDriver "config": could not open` on a later
-# build that shared the cache. Nothing under `/var/cache` reaches the image
-# either way, so there is nothing to relocate.
+# Image authors require the TPM2 token plugin and its runtime-loaded tss2
+# libraries because dracut cannot discover them through link dependencies.
+# They match file names because each family uses a multiarch directory. Debian
+# kernel maintainers build the TPM drivers into the kernel.
+for name in libcryptsetup-token-systemd-tpm2.so libtss2-esys.so libtss2-rc.so \
+    libtss2-mu.so libtss2-tcti-device.so; do
+    if ! grep -q "/${name}[.0-9]*\$" <<< "$listing"; then
+        echo "the initramfs carries no ${name}, so a TPM2 answer cannot unlock this image" >&2
+        exit 1
+    fi
+done
+
+# Operators keep image package state under `/usr` because bootc applies `/var`
+# once during provisioning. Image authors leave `/var/cache/debconf` alone
+# because the build backend mounts `/var/cache` outside the image layer.
 mkdir -p /usr/lib/sysimage
 for pair in \
     dpkg:/var/lib/dpkg \
@@ -68,18 +57,14 @@ for pair in \
     from="${pair#*:}"
     to="/usr/lib/sysimage/${pair%%:*}"
     [ -L "$from" ] && continue
-    # A directory no package has created yet still gets its link, so the first
-    # install in a derived build writes to the relocated copy.
+    # Module authors create each link before derived builds install its package.
     if [ -d "$from" ]; then mv "$from" "$to"; else mkdir -p "$to"; fi
     mkdir -p "$(dirname "$from")"
     ln -sfT "$to" "$from"
 done
-# The link is made here as well as in tmpfiles.d because every RUN layer of a
-# derived build executes before systemd-tmpfiles ever does.
-#
-# And this is the check, not the log line it started as: an admindir `dpkg` can
-# no longer find is not an error, it is an empty database reported at **exit
-# 0**, so the count is the only thing that says the relocation worked.
+# Image authors cannot rely on boot-time tmpfiles during derived build layers.
+# Maintainers count packages because dpkg reports a missing admindir as empty
+# output with a successful exit.
 packages="$(dpkg-query -W -f '.' | wc -c)"
 if [ "$packages" -eq 0 ]; then
     echo "the relocated dpkg admindir answers for no packages at all" >&2
@@ -87,92 +72,50 @@ if [ "$packages" -eq 0 ]; then
 fi
 echo "dpkg answers for ${packages} packages from /usr/lib/sysimage/dpkg"
 
-# ---- what a build must not bake in ----
 : > /etc/machine-id
-# Both bases arrive with a couple of dozen directories under /run, created by
-# package scripts at unpack time and recreated at boot by a tmpfiles rule or by
-# the service that wants them — `bootc container lint` reports the lot as
-# `nonempty-run-tmp`. Measured on `debian:forky` as well as `ubuntu:26.04`, so
-# this is not the Ubuntu half of this hook. `/tmp` is already empty and stays
-# that way: the tool mounts a tmpfs over it for every layer.
-#
-# `secrets` and `.containerenv` are the build backend's own mounts, the same
-# shape as the bind-mounted /etc files below — `rm` answers `Device or resource
-# busy` on them, and neither is committed to a layer anyway. A plain
-# `rm -rf /run/*` therefore fails the build rather than emptying it.
+# Image authors remove package-created `/run` state for bootc lint. They keep
+# the build backend's `secrets` and `.containerenv` mounts because `rm` cannot
+# remove those mount points.
 find /run -mindepth 1 -maxdepth 1 ! -name secrets ! -name .containerenv \
     -exec rm -rf {} +
 
-# `ubuntu:*` ships a uid 1000 account in the `sudo` group, locked, owning no
-# file anywhere outside the /home this hook deletes below, and declared by no
-# sysusers.d rule — the other half of what the lint reports. A base is not
-# where a login comes from; `login-access` is. So it goes rather than being
-# left for somebody to find. `debian:*` ships no such account, which is what
-# the guard is for.
+# Image authors remove Ubuntu's base account so `login-access` owns account
+# creation. They guard the removal because Debian has no `ubuntu` account.
 if getent passwd ubuntu > /dev/null; then
     userdel ubuntu
 fi
-# Debian's `dbus.conf` declares /var/lib/dbus/machine-id, so the tool's /var
-# pass skips it *and* leaves the file on disk — and it declares it with `L`
-# rather than `L+`, so tmpfiles will not replace it at boot either. Left alone,
-# every machine installed from this base shares one D-Bus machine ID that does
-# not match its systemd one.
+# Image authors remove the base D-Bus machine ID because its `L` tmpfiles rule
+# will not replace an existing file at boot.
 rm -f /var/lib/dbus/machine-id
 rm -f /etc/ssh/ssh_host_*
-# bootc overlays /etc, and libmount warns "fstab has been modified" at boot
-# over a placeholder the container image ships and no machine wants.
+# Image authors remove the container's placeholder fstab to avoid libmount's
+# modification warning after bootc overlays `/etc`.
 rm -f /etc/fstab
 
-# Debian's `openssh-server` postinst enables `ssh.service` into
-# `multi-user.target.wants` and generates host keys, so every image from this
-# base would listen on the network because a package said so and not because
-# anyone chose it. **The package stays and the enablement goes**: a machine
-# with no sshd on disk cannot be reached over the network even by someone who
-# has a console, and `login-access` is the module that turns it on. Hooks run
-# before the preset pass, so that module's `enable ssh.service` lands after
-# this and there is no ordering between the two files to get wrong.
-#
-# This is only half of it: a *first* boot runs `systemctl preset-all`, which
-# enables anything no preset file names, and a removal cannot survive that.
-# `45-module-bootc-base.preset` carries the other half.
+# Image authors remove package enablement so `login-access` controls SSH
+# exposure. They also ship a disable preset because first-boot presetting would
+# restore the package default.
 rm -f /etc/systemd/system/multi-user.target.wants/ssh.service
 
-# `89-ethernet.network` claims every ethernet, and a desktop module installs
-# NetworkManager, which claims the same link: both configure it and networkd
-# logs `Foreign process 'NetworkManager' changed sysctl`. This hook is the
-# first place that can tell — a preset is written before anyone knows what a
-# later module installs. The claim goes and networkd stays running, so its four
-# socket units have a service to activate and nothing lands in `failed`.
+# Image authors remove networkd's Ethernet match when they install
+# NetworkManager to prevent two managers from configuring the same link.
 if [ -x /usr/sbin/NetworkManager ]; then
     rm -f /usr/lib/systemd/network/89-ethernet.network
 fi
 
-# And the rest of what `debian:*` ships as a *container* image, which a machine
-# is not: Docker's own build policy, five files, measured on
-# `docker.io/library/debian:forky` 2026-09-01. `docker-apt-speedup` is
-# `force-unsafe-io`, so dpkg does not fsync — a defensible trade for a build
-# and not for a system that has to survive a power cut. The four in
-# `apt.conf.d` delete the package cache, gzip the indexes, drop translations
-# and refuse suggests. `debian:trixie` and `ghcr.io/bootcrew/debian-bootc`
-# carry the identical set, so this is the deb approach and not one base's
-# mistake.
-#
-# Removed here, after every module's installs, so the build still gets the
-# speedup and only the image is clean. Two siblings of these are *not* here:
-# `/etc/hostname` and `/etc/resolv.conf` are bind-mounted into every `RUN` by
-# the build backend, so a layer cannot write or delete them at all — `rm`
-# answers `Device or resource busy`. `Containerfile.inc` replaces the first
-# with a `COPY`, and `tmpfiles.d/00-resolv-conf.conf` the second at boot.
+# Image authors remove Docker's apt policy after package installation because
+# `force-unsafe-io` risks package state during power loss. They leave hostname
+# and resolver handling to the Containerfile and tmpfiles because the build
+# backend bind-mounts those paths during `RUN`.
 rm -f /etc/dpkg/dpkg.cfg.d/docker-apt-speedup
 rm -f /etc/apt/apt.conf.d/docker-clean \
     /etc/apt/apt.conf.d/docker-gzip-indexes \
     /etc/apt/apt.conf.d/docker-no-languages \
     /etc/apt/apt.conf.d/docker-autoremove-suggests
 
-# ---- the ostree-shaped root ----
-# /opt is not here: the tool's own finalize relocates it and restores the
-# base's directory afterwards, so a symlink written now would be thrown away.
-# shellcheck disable=SC2114 # replacing the system directories is the point
+# Image authors leave `/opt` to Tect's later finalizer because it would replace
+# a symlink created here.
+# shellcheck disable=SC2114
 rm -rf /boot /home /root /srv /mnt /usr/local
 mkdir -p /boot /sysroot /var/home /var/srv /var/mnt /var/usrlocal /var/roothome
 chmod 0700 /var/roothome

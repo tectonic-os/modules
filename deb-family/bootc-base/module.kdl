@@ -7,34 +7,21 @@ provides "bootc-base"
 provides "bootc" "bootupctl"
 provides "dpkg-database" file="/usr/lib/sysimage/dpkg"
 provides "luks-initramfs"
-// Installed here and enabled by `login-access`, which requires it.
 provides "ssh"
 
 requires "build-environment"
 
-// bootc opens its composefs image store by running `podman images` in it, so
-// the *installed* machine needs a container runtime and not just the builder.
-// Declared here rather than folded into this module's package list, because it
-// is bootc's dependency and a repository should be told about it by `check`
-// before it builds. See `deb-family/container-runtime` for the measurement.
+// Users install a container runtime on the target because bootc invokes
+// `podman images` against its composefs store. Module authors keep the runtime
+// as a dependency so `tect check` reports its absence before a build.
 requires "container-runtime"
 
-// Deliberately *not* `provides "initramfs-generation"`, though this module does
-// regenerate one. Two reasons, both measured. `ghcr.io/bootcrew/debian-bootc`
-// declares it on its base row, so a module declaring it too is covered "in
-// part" and `graph.rs` makes that an error — it turned the `collection debian`
-// leg red at `generate`, which is a leg that had been green on every pull
-// request. And the ordering would be backwards anyway: dracut runs in this
-// module's `finalize.sh`, hooks run in build order, so a module that
-// `requires` the capability would have its own finalize hook run *after* the
-// initramfs was built rather than before.
+// Module authors omit `initramfs-generation` because a base can provide it and
+// because finalize hooks from dependent modules would run after this one.
 
-// Neither family packages `bootc`, so it is built here. Both halves of the
-// release are pinned: the source and the vendored dependencies its `.cargo`
-// config replaces crates.io with, so the compile reaches no network and every
-// byte of it is held to a hash. `make bin` builds the workspace, xtask
-// included, so the toolchain has to satisfy xtask's rust-version and not just
-// the library's.
+// Maintainers pin upstream source and vendored dependencies so image builds
+// compile bootc offline from verified bytes. They build the workspace because
+// bootc's `make bin` includes xtask.
 asset "bootc" {
     pin {
         renovate datasource="github-releases" depName="bootc-dev/bootc"
@@ -53,12 +40,8 @@ asset "bootc-vendor" {
     }
 }
 
-// `bootupd` is the only thing `bootc install` will install GRUB with — every
-// other arm either routes through it or writes systemd-boot — and neither
-// family packages it any more than they package `bootc`. Same two-pin shape as
-// above: the `.crate` is the released source and the vendor tarball is every
-// dependency, so the compile reaches no network and every byte is held to a
-// hash.
+// Maintainers pin bootupd source and vendored dependencies so image builds can
+// compile the GRUB installer offline from verified bytes.
 asset "bootupd" {
     pin {
         renovate datasource="github-releases" depName="coreos/bootupd"
@@ -77,47 +60,17 @@ asset "bootupd-vendor" {
     }
 }
 
-// **This module compiles bootc and bootupd from the pins above, and that is
-// the default.** The source is upstream's own released tarball, held to a
-// hash; `build-tools.sh` beside this file is every command that runs; and the
-// binaries that reach the image are the ones this repository's own build
-// produced. Nothing about it has to be taken on trust, which is why it is not
-// opt-out.
-//
-// It costs 212s of compile on a 32-thread host and 18m13s on a 4-vCPU runner,
-// measured 2026-09-12 and off `proving-ground` run `33858957423`. A rebuild
-// costs nothing: the layer is cached unless the module moves.
-//
-// **An image that wants that time back opts in**, and says so in its own
-// image file where anyone reading the repository can see it:
-//
-//     module "tectonic-os/deb-family/bootc-base" {
-//         prebuilt-tools #true
-//     }
-//
-// **Nothing publishes that tarball yet.** The pins below name no release, so
-// an image that opts in today compiles anyway and is told why. What will
-// publish it is a fork of each upstream carrying one commit — its build
-// workflow — so the attestation names the source tree the binary was built
-// from; `NEXT-46` stage 6 holds that design and what is unsettled in it.
+// Users compile the pinned sources by default. They can request prebuilt tools
+// to save build time. Users receive the same source build when verification
+// fails.
 option "prebuilt-tools" type="bool" {
     description "Fetch the compiled bootc and bootupd published from this module's pins instead of compiling them here"
     default #false
 }
 
-// Two assets and not one gate, because `asset` is not a node a `family` block
-// holds and the two families link against their own libostree and libssl;
-// `module.sh` selects by the base's os-release ID.
-//
-// `manual`, and `version "none"` is the unpublished state rather than a
-// placeholder that could ever resolve: no release is named, so nothing is
-// fetched. A publisher lands the version and the hash together.
-//
-// **A sha256 says the bytes have not moved; an attestation says where they
-// came from**, and the build layer can only check the first — it has no
-// network trust anchor. So the hash is what this pins, a person verifies the
-// attestation in the commit that records it, and a tarball the layer cannot
-// verify it compiles instead.
+// Maintainers publish one tarball per family because the binaries link against
+// family libraries. They record each version and hash after verifying its
+// provenance. Users fall back to a source build until both values are set.
 asset "bootc-tools-debian" {
     pin {
         manual "the tools workflow builds it from the four pins above; this records the release it wrote"
@@ -136,50 +89,17 @@ asset "bootc-tools-ubuntu" {
     }
 }
 
-// `bootc install` needs the ostree CLI and nothing else — measured, not
-// assumed: `podman` is not required and the base's own `skopeo` is what bootc
-// 1.16 shells out to. The rest is what a container image lacks and a machine
-// needs to come up: one kernel, its firmware, the boot chain, and the
-// filesystem tools `bootc install to-disk` partitions with. `curl` is here
-// because the collection's own `fetch-helpers.sh` runs on it and neither base
-// container image ships it, so any deb module with an `asset` needs it first.
-// `man-db` is here for `tect validate-image`: `systemd-analyze verify` renders
-// every `Documentation=man:` a unit declares, and with no man reader in the
-// image it fails the unit rather than skipping the page. `openssh-server` is
-// how anyone reaches a machine installed from this base at all, `sudo` is how
-// they become root on it, and `less` is what `journalctl` pages through.
-//
-// `systemd-cryptsetup` is the binary that unlocks a LUKS root at boot, and
-// since systemd 255 it is a package of its own: `cryptsetup-bin` puts
-// `/usr/sbin/cryptsetup` in the image and nothing at all in the initrd, so
-// every LUKS install this base produced booted to an emergency shell.
-// Measured on `gnome-debian` 2026-09-12 — the initrd's only crypt content was
-// `dm-crypt.ko.xz`, the kernel module with no binary to drive it, while dracut
-// listed `crypt` and `crypt-lib` among that same initrd's modules. A module
-// list is not evidence; `finalize.sh` asserts the binary inside the initrd.
-//
-// `iproute2` is not a convenience. Neither deb base ships it, so `ip` did not
-// exist on any machine installed from here — which is how a machine with no
-// address at all went unnoticed until `bootc upgrade` answered `failure in
-// name resolution` on 2026-09-04 and there was nothing to diagnose it with.
-// The fix for the address itself is `89-ethernet.network` and the
-// `systemd-networkd` line in this module's preset; this is what makes the next
-// one visible.
-//
-// The two families differ in exactly two entries, which is what the gates
-// below hold and why everything above them is written once. Ubuntu resolves
-// every other name unchanged; it packages no `linux-image-amd64` and no
-// `firmware-linux-free`. `linux-image-generic` is the metapackage that tracks
-// its kernel, and `linux-firmware-minimal` is the **nearest** firmware match
-// rather than an equivalent one — it carried the qemu boot this base was
-// proved by on 2026-09-03 and nothing has yet compared what it holds against
-// Debian's on hardware.
+// Image authors install `curl` for pinned assets and `man-db` for unit-file
+// validation. Operators need `systemd-cryptsetup` inside the initramfs for LUKS
+// roots and `iproute2` for network diagnosis. Image authors install
+// `tpm2-tools` so dracut includes TPM2 support. Distribution maintainers use
+// different kernel and firmware package names for Debian and Ubuntu.
 packages "dracut" "ostree" "composefs" "systemd-boot" "systemd-boot-efi" \
     "shim-signed" "grub-efi-amd64-signed" "grub-common" "systemd-resolved" \
     "libnss-resolve" "libnss-myhostname" "iproute2" "skopeo" \
     "ca-certificates" "zstd" "curl" "btrfs-progs" "xfsprogs" "e2fsprogs" \
     "dosfstools" "fdisk" "efibootmgr" "cryptsetup-bin" "systemd-cryptsetup" "dmsetup" \
-    "openssh-server" "sudo" "less" "man-db"
+    "openssh-server" "sudo" "less" "man-db" "tpm2-tools"
 
 family "debian" { packages "linux-image-amd64" "firmware-linux-free" }
 family "ubuntu" { packages "linux-image-generic" "linux-firmware-minimal" }

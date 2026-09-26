@@ -1,0 +1,6 @@
+description "Keylime attestation server; protect the pull agent's registrar HTTP endpoint"
+
+// Distribution maintainers do not publish Keylime in Debian or Ubuntu archives.
+supports "fedora" "rhel"
+
+packages "keylime-registrar" "keylime-verifier" "keylime-tenant" "keylime-tools"

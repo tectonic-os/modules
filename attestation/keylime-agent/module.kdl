@@ -1,0 +1,13 @@
+description "Keylime remote attestation agent; protect registrar HTTP on the network"
+
+// Distribution maintainers do not publish Keylime in Debian or Ubuntu archives.
+supports "fedora" "rhel"
+
+packages "keylime-agent-rust"
+
+// Users can share one registrar address across a fleet. Operators set each
+// machine's callback address in a later `contact_ip` config drop-in.
+option "registrar" type="string" {
+    description "Registrar address; remote registration needs an encrypted private network"
+    default "127.0.0.1"
+}

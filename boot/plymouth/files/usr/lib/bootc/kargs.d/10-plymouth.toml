@@ -1,0 +1,5 @@
+# Image authors add `splash` to request Plymouth's graphical screen and `quiet`
+# to keep kernel messages off it. Operators with a serial console use
+# `plymouth.ignore-serial-consoles` to keep that screen. They receive passphrase
+# prompts on the screen while Plymouth runs.
+kargs = ["quiet", "splash", "plymouth.ignore-serial-consoles"]
